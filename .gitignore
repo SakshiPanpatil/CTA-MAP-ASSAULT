@@ -16,6 +16,15 @@ __pycache__/
 
 # GTFS data exports
 cta-transit-app/public/data/*.txt
+data/
+*.csv
+*.xlsx
+*.xls
+*.zip
+*.7z
+*.tar
+*.parquet
+*.feather
 
 # Logs
 logs/

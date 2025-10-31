@@ -4,29 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTA Bus Routes & Stops - Interactive Map</title>
-    
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    
+
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
         }
-        
+
         #map {
             height: 100vh;
             width: 100%;
         }
-        
+
         .info-panel {
             position: absolute;
             top: 20px;
@@ -40,7 +40,7 @@
             max-height: 90vh;
             overflow-y: auto;
         }
-        
+
         .info-panel h1 {
             margin: 0 0 15px 0;
             font-size: 24px;
@@ -49,18 +49,18 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         .info-panel .stat {
             margin: 10px 0;
             font-size: 16px;
             color: #333;
         }
-        
+
         .info-panel .stat strong {
             color: #1e88e5;
             font-size: 20px;
         }
-        
+
         .info-panel .note {
             margin-top: 15px;
             padding-top: 15px;
@@ -69,19 +69,19 @@
             color: #666;
             line-height: 1.5;
         }
-        
+
         .active-routes {
             margin-top: 15px;
             padding-top: 15px;
             border-top: 2px solid #e0e0e0;
         }
-        
+
         .active-routes h3 {
             font-size: 16px;
             margin-bottom: 10px;
             color: #333;
         }
-        
+
         .route-chip {
             display: inline-block;
             padding: 5px 12px;
@@ -92,12 +92,12 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .route-chip:hover {
             transform: scale(1.05);
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
-        
+
         .loading {
             position: absolute;
             top: 50%;
@@ -110,23 +110,28 @@
             z-index: 2000;
             text-align: center;
         }
-        
+
         .loading h2 {
             color: #1e88e5;
             margin-bottom: 15px;
         }
-        
+
         .loading-step {
             margin: 10px 0;
             font-size: 14px;
             color: #666;
         }
-        
+
         .loading-step.active {
             color: #1e88e5;
             font-weight: bold;
         }
-        
+
+        .loading-step.complete {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
         .spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #1e88e5;
@@ -136,24 +141,24 @@
             animation: spin 1s linear infinite;
             margin: 20px auto;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .leaflet-popup-content-wrapper {
             border-radius: 8px;
             box-shadow: 0 3px 14px rgba(0,0,0,0.4);
         }
-        
+
         .leaflet-popup-content {
             margin: 15px;
             line-height: 1.6;
             font-size: 14px;
             max-width: 350px;
         }
-        
+
         .popup-title {
             font-size: 16px;
             font-weight: bold;
@@ -162,25 +167,25 @@
             padding-bottom: 8px;
             border-bottom: 2px solid #e3f2fd;
         }
-        
+
         .popup-field {
             margin: 8px 0;
             color: #333;
         }
-        
+
         .popup-field strong {
             color: #555;
             display: block;
             margin-bottom: 5px;
         }
-        
+
         .routes-list {
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
             margin-top: 5px;
         }
-        
+
         .route-badge {
             display: inline-block;
             padding: 4px 10px;
@@ -190,22 +195,22 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .route-badge:hover {
             transform: scale(1.1);
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        
+
         .wheelchair-yes {
             color: #4caf50;
             font-weight: bold;
         }
-        
+
         .wheelchair-no {
             color: #f44336;
             font-weight: bold;
         }
-        
+
         .wheelchair-unknown {
             color: #ff9800;
             font-weight: bold;
@@ -216,16 +221,16 @@
     <div id="loading" class="loading">
         <h2>🚌 Loading CTA Data...</h2>
         <div class="spinner"></div>
-        <div class="loading-step" id="step-stops">Loading stops...</div>
-        <div class="loading-step" id="step-routes">Loading routes...</div>
-        <div class="loading-step" id="step-trips">Loading trips...</div>
-        <div class="loading-step" id="step-stoptimes">Loading stop times...</div>
-        <div class="loading-step" id="step-shapes">Loading shapes...</div>
-        <div class="loading-step" id="step-processing">Processing data...</div>
+        <div class="loading-step" id="step-stops">Fetching stops...</div>
+        <div class="loading-step" id="step-routes">Fetching routes...</div>
+        <div class="loading-step" id="step-trips">Mapping trips...</div>
+        <div class="loading-step" id="step-stoptimes">Resolving stop times...</div>
+        <div class="loading-step" id="step-shapes">Preparing shapes...</div>
+        <div class="loading-step" id="step-processing">Rendering map...</div>
     </div>
-    
+
     <div id="map"></div>
-    
+
     <div class="info-panel">
         <h1>🚌 CTA Transit Map</h1>
         <div class="stat">
@@ -240,7 +245,7 @@
             • Click on a route number to draw its path<br>
             • Compare multiple routes!<br>
             <br>
-            🔍 Zoom in to see stops clearly
+            🔍 Served via FastAPI — ensure the backend is running.
         </div>
         <div class="active-routes" id="active-routes-panel" style="display: none;">
             <h3>📍 Active Routes:</h3>
@@ -251,31 +256,35 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    
+
     <script>
+        const API_BASE = '/api/v1/gtfs';
+
         // Global data storage
         const DATA = {
             stops: [],
             routes: {},
-            trips: {},
-            stopTimes: {},
-            shapes: {},
             stopToRoutes: {},
             routeShapes: {},
             activeRoutes: new Set(),
-            routeLayers: {}
+            routeLayers: {},
+            routeGeometries: {},
+            stats: {
+                stopCount: 0,
+                routeCount: 0
+            }
         };
-        
+
         // Initialize the map
         const map = L.map('map').setView([41.8781, -87.6298], 11);
-        
+
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19,
             minZoom: 10
         }).addTo(map);
-        
+
         // Marker cluster group
         const markers = L.markerClusterGroup({
             maxClusterRadius: 50,
@@ -283,254 +292,147 @@
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true
         });
-        
-        // CSV Parser
-        function parseCSV(text) {
-            const lines = text.trim().split(/\r?\n/);
-            const headerLine = lines[0];
-            const headers = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let char of headerLine) {
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    headers.push(current.trim().replace(/"/g, ''));
-                    current = '';
-                } else if (char !== '\r') {
-                    current += char;
-                }
-            }
-            headers.push(current.trim().replace(/"/g, ''));
-            
-            const data = [];
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].replace(/\r$/, '');
-                if (!line.trim()) continue;
-                
-                const values = [];
-                current = '';
-                inQuotes = false;
-                
-                for (let char of line) {
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        values.push(current.trim().replace(/^"|"$/g, ''));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                values.push(current.trim().replace(/^"|"$/g, ''));
-                
-                const row = {};
-                headers.forEach((header, index) => {
-                    row[header] = values[index] || '';
-                });
-                data.push(row);
-            }
-            
-            return data;
-        }
-        
-        // Update loading step
+
         function updateStep(stepId, status = 'active') {
             const step = document.getElementById(stepId);
             if (step) {
                 step.classList.add(status);
             }
         }
-        
-        // Wheelchair accessibility text
+
+        function normalizeColor(hex, fallback) {
+            if (!hex) return fallback;
+            const cleaned = hex.replace('#', '').trim();
+            if (cleaned.length === 6) {
+                return `#${cleaned}`;
+            }
+            return fallback;
+        }
+
+        function normalizeWheelchairValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return 'unknown';
+            }
+            const stringValue = String(value).trim();
+            if (stringValue === '1') return 'yes';
+            if (stringValue === '2') return 'no';
+            return 'unknown';
+        }
+
         function getWheelchairText(value) {
-            if (value === '1') return '<span class="wheelchair-yes">♿ Accessible</span>';
-            if (value === '2') return '<span class="wheelchair-no">♿ Not Accessible</span>';
+            const normalized = normalizeWheelchairValue(value);
+            if (normalized === 'yes') return '<span class="wheelchair-yes">♿ Accessible</span>';
+            if (normalized === 'no') return '<span class="wheelchair-no">♿ Not Accessible</span>';
             return '<span class="wheelchair-unknown">♿ Unknown</span>';
         }
-        
-        // Toggle route display
-        function toggleRoute(routeId) {
-            if (DATA.activeRoutes.has(routeId)) {
-                // Remove route
-                DATA.activeRoutes.delete(routeId);
-                if (DATA.routeLayers[routeId]) {
-                    map.removeLayer(DATA.routeLayers[routeId]);
-                    delete DATA.routeLayers[routeId];
-                }
-            } else {
-                // Add route
-                DATA.activeRoutes.add(routeId);
-                drawRoute(routeId);
+
+        async function fetchJson(url, errorMessage) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`${errorMessage} (status ${response.status})`);
             }
-            updateActiveRoutesPanel();
+            return response.json();
         }
-        
-        // Draw route on map
-        function drawRoute(routeId) {
+
+        async function fetchRouteGeometry(routeId) {
+            if (DATA.routeGeometries[routeId]) {
+                return DATA.routeGeometries[routeId];
+            }
+
+            const payload = await fetchJson(
+                `${API_BASE}/routes/${routeId}/geometry`,
+                `Unable to load geometry for route ${routeId}`
+            );
+
+            const latlngs = (payload.points || []).map(point => [Number(point[0]), Number(point[1])]);
+            const geometry = {
+                shapeId: payload.shape_id,
+                latlngs
+            };
+
+            DATA.routeGeometries[routeId] = geometry;
+            return geometry;
+        }
+
+        async function toggleRoute(routeId) {
+            try {
+                if (DATA.activeRoutes.has(routeId)) {
+                    DATA.activeRoutes.delete(routeId);
+                    if (DATA.routeLayers[routeId]) {
+                        map.removeLayer(DATA.routeLayers[routeId]);
+                        delete DATA.routeLayers[routeId];
+                    }
+                } else {
+                    DATA.activeRoutes.add(routeId);
+                    await drawRoute(routeId);
+                }
+                updateActiveRoutesPanel();
+            } catch (error) {
+                console.error(`Failed to toggle route ${routeId}`, error);
+                alert(`Unable to display route ${routeId}: ${error.message}`);
+            }
+        }
+
+        window.toggleRoute = toggleRoute;
+
+        async function drawRoute(routeId) {
             const route = DATA.routes[routeId];
             if (!route) return;
-            
-            // Get shape IDs for this route
-            const shapeIds = DATA.routeShapes[routeId];
-            if (!shapeIds || shapeIds.length === 0) {
-                console.log('No shapes found for route:', routeId);
+
+            const geometry = await fetchRouteGeometry(routeId);
+            if (!geometry.latlngs.length) {
+                console.warn('No geometry points returned for route:', routeId);
                 return;
             }
-            
-            // Use the first shape (main pattern)
-            const shapeId = shapeIds[0];
-            const shapePoints = DATA.shapes[shapeId];
-            
-            if (!shapePoints || shapePoints.length === 0) {
-                console.log('No shape points for:', shapeId);
-                return;
-            }
-            
-            // Create polyline
-            const color = '#' + (route.route_color || '99999C');
-            const polyline = L.polyline(shapePoints, {
-                color: color,
+
+            const color = normalizeColor(route.route_color, '#99999c');
+            const textColor = normalizeColor(route.route_text_color, '#ffffff');
+
+            const polyline = L.polyline(geometry.latlngs, {
+                color,
                 weight: 4,
                 opacity: 0.7
             }).addTo(map);
-            
-            polyline.bindPopup(`<strong>${route.route_short_name} - ${route.route_long_name}</strong>`);
-            
+
+            const popupText = `${route.route_short_name || route.route_id} - ${route.route_long_name || 'Route'}`;
+            polyline.bindPopup(`<strong style="color:${textColor}">${popupText}</strong>`);
+
             DATA.routeLayers[routeId] = polyline;
         }
-        
-        // Update active routes panel
+
         function updateActiveRoutesPanel() {
             const panel = document.getElementById('active-routes-panel');
             const list = document.getElementById('active-routes-list');
-            
+
             if (DATA.activeRoutes.size === 0) {
                 panel.style.display = 'none';
                 return;
             }
-            
+
             panel.style.display = 'block';
             list.innerHTML = '';
-            
+
             DATA.activeRoutes.forEach(routeId => {
                 const route = DATA.routes[routeId];
                 if (route) {
                     const chip = document.createElement('span');
                     chip.className = 'route-chip';
-                    chip.textContent = `✕ ${route.route_short_name}`;
-                    chip.style.backgroundColor = '#' + (route.route_color || '99999C');
-                    chip.style.color = '#' + (route.route_text_color || 'ffffff');
+                    chip.textContent = `✕ ${route.route_short_name || route.route_id}`;
+                    chip.style.backgroundColor = normalizeColor(route.route_color, '#99999c');
+                    chip.style.color = normalizeColor(route.route_text_color, '#ffffff');
                     chip.onclick = () => toggleRoute(routeId);
                     list.appendChild(chip);
                 }
             });
         }
-        
-        // Load all data
-        async function loadAllData() {
-            try {
-                // Load stops
-                updateStep('step-stops');
-                const stopsText = await fetch('data/stops.txt').then(r => r.text());
-                DATA.stops = parseCSV(stopsText);
-                console.log('Stops loaded:', DATA.stops.length);
-                
-                // Load routes
-                updateStep('step-routes');
-                const routesText = await fetch('data/routes.txt').then(r => r.text());
-                const routesData = parseCSV(routesText);
-                routesData.forEach(route => {
-                    DATA.routes[route.route_id] = route;
-                });
-                console.log('Routes loaded:', Object.keys(DATA.routes).length);
-                
-                // Load trips
-                updateStep('step-trips');
-                const tripsText = await fetch('data/trips.txt').then(r => r.text());
-                const tripsData = parseCSV(tripsText);
-                tripsData.forEach(trip => {
-                    DATA.trips[trip.trip_id] = trip;
-                    
-                    // Map routes to shapes
-                    if (!DATA.routeShapes[trip.route_id]) {
-                        DATA.routeShapes[trip.route_id] = [];
-                    }
-                    if (trip.shape_id && !DATA.routeShapes[trip.route_id].includes(trip.shape_id)) {
-                        DATA.routeShapes[trip.route_id].push(trip.shape_id);
-                    }
-                });
-                console.log('Trips loaded:', Object.keys(DATA.trips).length);
-                
-                // Load stop times
-                updateStep('step-stoptimes');
-                const stopTimesText = await fetch('data/stop_times.txt').then(r => r.text());
-                const stopTimesData = parseCSV(stopTimesText);
-                
-                stopTimesData.forEach(st => {
-                    const trip = DATA.trips[st.trip_id];
-                    if (trip) {
-                        const routeId = trip.route_id;
-                        const stopId = st.stop_id;
-                        
-                        if (!DATA.stopToRoutes[stopId]) {
-                            DATA.stopToRoutes[stopId] = new Set();
-                        }
-                        DATA.stopToRoutes[stopId].add(routeId);
-                    }
-                });
-                console.log('Stop times processed');
-                
-                // Load shapes
-                updateStep('step-shapes');
-                const shapesText = await fetch('data/shapes.txt').then(r => r.text());
-                const shapesData = parseCSV(shapesText);
-                
-                shapesData.forEach(shape => {
-                    if (!DATA.shapes[shape.shape_id]) {
-                        DATA.shapes[shape.shape_id] = [];
-                    }
-                    DATA.shapes[shape.shape_id].push([
-                        parseFloat(shape.shape_pt_lat),
-                        parseFloat(shape.shape_pt_lon)
-                    ]);
-                });
-                console.log('Shapes loaded:', Object.keys(DATA.shapes).length);
-                
-                // Process and display
-                updateStep('step-processing');
-                displayStops();
-                
-                // Update stats
-                document.getElementById('stop-count').textContent = DATA.stops.length.toLocaleString();
-                document.getElementById('route-count').textContent = Object.keys(DATA.routes).length;
-                
-                // Hide loading
-                document.getElementById('loading').style.display = 'none';
-                
-                console.log('🎉 All data loaded successfully!');
-                
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('loading').innerHTML = `
-                    <h2 style="color: #f44336;">Error Loading Data</h2>
-                    <p>${error.message}</p>
-                    <p style="font-size: 12px; margin-top: 10px;">
-                        Make sure all files are in the data/ folder
-                    </p>
-                `;
-            }
-        }
-        
-        // Display stops on map
+
         function displayStops() {
             DATA.stops.forEach(stop => {
                 const lat = parseFloat(stop.stop_lat);
                 const lon = parseFloat(stop.stop_lon);
-                
-                if (isNaN(lat) || isNaN(lon)) return;
-                
+
+                if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
                 const marker = L.circleMarker([lat, lon], {
                     radius: 6,
                     fillColor: '#1e88e5',
@@ -539,30 +441,29 @@
                     opacity: 1,
                     fillOpacity: 0.8
                 });
-                
-                // Get routes for this stop
+
                 const routes = DATA.stopToRoutes[stop.stop_id];
                 let routesHTML = '<em>No routes found</em>';
-                
+
                 if (routes && routes.size > 0) {
                     routesHTML = '<div class="routes-list">';
                     const sortedRoutes = Array.from(routes).sort();
                     sortedRoutes.forEach(routeId => {
                         const route = DATA.routes[routeId];
                         if (route) {
-                            const bgColor = '#' + (route.route_color || '99999C');
-                            const textColor = '#' + (route.route_text_color || 'ffffff');
-                            routesHTML += `<span class="route-badge" 
+                            const bgColor = normalizeColor(route.route_color, '#99999c');
+                            const textColor = normalizeColor(route.route_text_color, '#ffffff');
+                            routesHTML += `<span class="route-badge"
                                 style="background-color: ${bgColor}; color: ${textColor};"
                                 onclick="toggleRoute('${routeId}')"
-                                title="Click to show route ${route.route_short_name}">${route.route_short_name}</span>`;
+                                title="Click to show route ${route.route_short_name || route.route_id}">${route.route_short_name || route.route_id}</span>`;
                         }
                     });
                     routesHTML += '</div>';
                 }
-                
+
                 const popupContent = `
-                    <div class="popup-title">${stop.stop_name}</div>
+                    <div class="popup-title">${stop.stop_name || stop.stop_id}</div>
                     <div class="popup-field">
                         <strong>Description:</strong>
                         ${stop.stop_desc || 'No description'}
@@ -576,19 +477,63 @@
                         ${routesHTML}
                     </div>
                 `;
-                
+
                 marker.bindPopup(popupContent, {
                     maxWidth: 400,
                     className: 'custom-popup'
                 });
-                
+
                 markers.addLayer(marker);
             });
-            
+
             map.addLayer(markers);
         }
-        
-        // Start loading
+
+        async function loadAllData() {
+            try {
+                updateStep('step-stops', 'active');
+                const bootstrap = await fetchJson(`${API_BASE}/bootstrap`, 'Unable to load GTFS bootstrap data');
+                updateStep('step-stops', 'complete');
+
+                DATA.stops = bootstrap.stops || [];
+                DATA.routes = bootstrap.routes || {};
+                DATA.routeShapes = bootstrap.route_shapes || {};
+                DATA.stopToRoutes = {};
+
+                Object.entries(bootstrap.stop_to_routes || {}).forEach(([stopId, routes]) => {
+                    DATA.stopToRoutes[stopId] = new Set(routes);
+                });
+
+                DATA.stats.stopCount = bootstrap.metadata?.stop_count ?? DATA.stops.length;
+                DATA.stats.routeCount = bootstrap.metadata?.route_count ?? Object.keys(DATA.routes).length;
+
+                updateStep('step-routes', 'complete');
+                updateStep('step-trips', 'complete');
+                updateStep('step-stoptimes', 'complete');
+                updateStep('step-shapes', 'complete');
+
+                updateStep('step-processing', 'active');
+                displayStops();
+
+                document.getElementById('stop-count').textContent = DATA.stats.stopCount.toLocaleString();
+                document.getElementById('route-count').textContent = DATA.stats.routeCount.toLocaleString();
+
+                document.getElementById('loading').style.display = 'none';
+                updateStep('step-processing', 'complete');
+
+                console.log('🎉 All data loaded successfully from FastAPI!');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = `
+                    <h2 style="color: #f44336;">Error Loading Data</h2>
+                    <p>${error.message}</p>
+                    <p style="font-size: 12px; margin-top: 10px;">
+                        Ensure the FastAPI server is running and reachable at <code>${API_BASE}</code>.
+                    </p>
+                `;
+            }
+        }
+
         loadAllData();
     </script>
 </body>

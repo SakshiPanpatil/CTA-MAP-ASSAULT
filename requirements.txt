@@ -1,6 +1,9 @@
 pandas
-numpy 
+numpy
 matplotlib
 scikit-learn
 seaborn
 openpyxl
+fastapi
+uvicorn[standard]
+pydantic-settings
