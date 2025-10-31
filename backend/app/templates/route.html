@@ -256,9 +256,105 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script>
+        window.__INITIAL_TOKEN__ = {{ initial_token | tojson }};
+        window.__INITIAL_TOKEN_EXPIRY__ = {{ token_expires_at | tojson }};
+    </script>
 
     <script>
         const API_BASE = '/api/v1/gtfs';
+        const AUTH_BASE = '/api/v1/auth';
+        const TOKEN_STORAGE_KEY = 'ctaMapToken';
+        const TOKEN_EXP_STORAGE_KEY = 'ctaMapTokenExpires';
+        const TOKEN_LEEWAY_MS = 5000;
+        const SERVER_TOKEN = typeof window !== 'undefined' ? window.__INITIAL_TOKEN__ : null;
+        const SERVER_TOKEN_EXPIRY = typeof window !== 'undefined' ? window.__INITIAL_TOKEN_EXPIRY__ : null;
+
+        const AUTH = {
+            token: sessionStorage.getItem(TOKEN_STORAGE_KEY) || null,
+            expiresAt: sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY)
+                ? new Date(sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY))
+                : null,
+        };
+
+        function isTokenActive() {
+            if (!AUTH.token) {
+                return false;
+            }
+            if (!AUTH.expiresAt) {
+                return true;
+            }
+            return AUTH.expiresAt.getTime() - Date.now() > TOKEN_LEEWAY_MS;
+        }
+
+        function storeToken(token, expiresAt) {
+            AUTH.token = token;
+            sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+
+            if (expiresAt) {
+                const expiry = new Date(expiresAt);
+                AUTH.expiresAt = expiry;
+                sessionStorage.setItem(TOKEN_EXP_STORAGE_KEY, expiry.toISOString());
+            } else {
+                AUTH.expiresAt = null;
+                sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
+            }
+        }
+
+        if (SERVER_TOKEN) {
+            storeToken(SERVER_TOKEN, SERVER_TOKEN_EXPIRY || null);
+        }
+
+        function clearToken() {
+            AUTH.token = null;
+            AUTH.expiresAt = null;
+            sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+            sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
+        }
+
+        async function requestToken(secretKey) {
+            const response = await fetch(`${AUTH_BASE}/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret_key: secretKey }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Token request failed with status ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        async function ensureAuthenticated() {
+            if (isTokenActive()) {
+                return;
+            }
+
+            clearToken();
+
+            while (true) {
+                const secret = window.prompt('Enter the access key to load CTA data:');
+                if (secret === null) {
+                    throw new Error('Authentication cancelled by user');
+                }
+
+                const trimmed = secret.trim();
+                if (!trimmed) {
+                    alert('Access key cannot be empty.');
+                    continue;
+                }
+
+                try {
+                    const tokenResponse = await requestToken(trimmed);
+                    storeToken(tokenResponse.access_token, tokenResponse.expires_at);
+                    break;
+                } catch (error) {
+                    console.error('Authentication failed', error);
+                    alert('Invalid access key. Please try again.');
+                }
+            }
+        }
 
         // Global data storage
         const DATA = {
@@ -271,8 +367,8 @@
             routeGeometries: {},
             stats: {
                 stopCount: 0,
-                routeCount: 0
-            }
+                routeCount: 0,
+            },
         };
 
         // Initialize the map
@@ -282,7 +378,7 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19,
-            minZoom: 10
+            minZoom: 10,
         }).addTo(map);
 
         // Marker cluster group
@@ -290,7 +386,7 @@
             maxClusterRadius: 50,
             spiderfyOnMaxZoom: true,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
+            zoomToBoundsOnClick: true,
         });
 
         function updateStep(stepId, status = 'active') {
@@ -326,11 +422,37 @@
             return '<span class="wheelchair-unknown">♿ Unknown</span>';
         }
 
-        async function fetchJson(url, errorMessage) {
-            const response = await fetch(url);
+        async function fetchJson(url, errorMessage, options = {}) {
+            const config = { method: 'GET', headers: {}, ...options };
+            config.headers = { ...config.headers };
+
+            if (config.body && !(config.body instanceof FormData) && typeof config.body !== 'string') {
+                config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+                config.body = JSON.stringify(config.body);
+            }
+
+            await ensureAuthenticated();
+
+            if (AUTH.token) {
+                config.headers['Authorization'] = `Bearer ${AUTH.token}`;
+            }
+
+            let response = await fetch(url, config);
+
+            if (response.status === 401) {
+                clearToken();
+                alert('Session expired. Please enter the access key again.');
+                await ensureAuthenticated();
+                if (AUTH.token) {
+                    config.headers['Authorization'] = `Bearer ${AUTH.token}`;
+                }
+                response = await fetch(url, config);
+            }
+
             if (!response.ok) {
                 throw new Error(`${errorMessage} (status ${response.status})`);
             }
+
             return response.json();
         }
 
@@ -341,13 +463,13 @@
 
             const payload = await fetchJson(
                 `${API_BASE}/routes/${routeId}/geometry`,
-                `Unable to load geometry for route ${routeId}`
+                `Unable to load geometry for route ${routeId}`,
             );
 
             const latlngs = (payload.points || []).map(point => [Number(point[0]), Number(point[1])]);
             const geometry = {
                 shapeId: payload.shape_id,
-                latlngs
+                latlngs,
             };
 
             DATA.routeGeometries[routeId] = geometry;
@@ -391,7 +513,7 @@
             const polyline = L.polyline(geometry.latlngs, {
                 color,
                 weight: 4,
-                opacity: 0.7
+                opacity: 0.7,
             }).addTo(map);
 
             const popupText = `${route.route_short_name || route.route_id} - ${route.route_long_name || 'Route'}`;
@@ -439,7 +561,7 @@
                     color: '#0d47a1',
                     weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.8
+                    fillOpacity: 0.8,
                 });
 
                 const routes = DATA.stopToRoutes[stop.stop_id];
@@ -480,7 +602,7 @@
 
                 marker.bindPopup(popupContent, {
                     maxWidth: 400,
-                    className: 'custom-popup'
+                    className: 'custom-popup',
                 });
 
                 markers.addLayer(marker);

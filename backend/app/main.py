@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from .api.router import api_router
 from .core.config import settings
+from .core.security import create_access_token
 
 templates = Jinja2Templates(directory=str(settings.templates_directory))
 
@@ -21,7 +24,15 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def root(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse("route.html", {"request": request})
+        expires_delta = timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        token = create_access_token("cta-map-client", expires_delta)
+        expires_at = datetime.now(timezone.utc) + expires_delta
+        context = {
+            "request": request,
+            "initial_token": token,
+            "token_expires_at": expires_at.isoformat(),
+        }
+        return templates.TemplateResponse("route.html", context)
 
     return app
 
