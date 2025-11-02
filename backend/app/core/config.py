@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings
 BASE_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = BASE_DIR / "data"
 TEMPLATES_DIR = BASE_DIR / "backend" / "app" / "templates"
+STATIC_DIR = BASE_DIR / "backend" / "app" / "static"
 
 
 class Settings(BaseSettings):
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     data_directory: Path = DATA_DIR
     templates_directory: Path = TEMPLATES_DIR
+    static_directory: Path = STATIC_DIR
     jwt_secret_key: str = Field(..., env="JWT_SECRET_KEY")
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60

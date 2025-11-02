@@ -3,23 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTA Bus Routes & Stops - Interactive Map</title>
+    <title>CTA Transit Explorer</title>
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
     <style>
+        :root {
+            --cta-blue: #0c5ed7;
+            --cta-dark: #0b2c67;
+            --cta-light: #f1f5ff;
+            --cta-accent: #1990ff;
+            --card-radius: 18px;
+            --text-muted: #5f6b7b;
+            --border-color: #d9e1f2;
+        }
+
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #edf2fb 0%, #f8fbff 35%, #eef4ff 100%);
+            color: #1d2533;
         }
 
         #map {
@@ -29,634 +42,1026 @@
 
         .info-panel {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            z-index: 1000;
-            min-width: 300px;
-            max-height: 90vh;
-            overflow-y: auto;
+            top: 24px;
+            right: 24px;
+            width: 320px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: var(--card-radius);
+            box-shadow: 0 18px 38px rgba(26, 45, 97, 0.18);
+            padding: 22px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        .info-panel h1 {
-            margin: 0 0 15px 0;
-            font-size: 24px;
-            color: #1e88e5;
+        .panel-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 14px;
         }
 
-        .info-panel .stat {
-            margin: 10px 0;
-            font-size: 16px;
-            color: #333;
+        .panel-header img {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            box-shadow: 0 6px 12px rgba(12, 94, 215, 0.2);
+            background: #ffffff;
+            padding: 6px;
         }
 
-        .info-panel .stat strong {
-            color: #1e88e5;
-            font-size: 20px;
+        .panel-heading {
+            display: flex;
+            flex-direction: column;
         }
 
-        .info-panel .note {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #e0e0e0;
-            font-size: 13px;
-            color: #666;
-            line-height: 1.5;
+        .panel-heading h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--cta-dark);
+        }
+
+        .panel-heading span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .metric-card {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #f7faff 0%, #eef3ff 100%);
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-card .metric-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .metric-card .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--cta-dark);
+        }
+
+        .panel-divider {
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .panel-notes h2 {
+            font-size: 0.9rem;
+            margin: 0 0 6px 0;
+            color: var(--cta-dark);
+            font-weight: 600;
+        }
+
+        .panel-notes ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .panel-notes li {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .panel-notes li::before {
+            content: "\2022";
+            position: absolute;
+            left: 0;
+            color: var(--cta-blue);
+            font-weight: 700;
         }
 
         .active-routes {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #e0e0e0;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .active-routes.visible {
+            display: flex;
         }
 
         .active-routes h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #333;
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--cta-dark);
+            font-weight: 600;
+        }
+
+        #active-routes-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .route-chip {
-            display: inline-block;
-            padding: 5px 12px;
-            margin: 3px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            background: #ffffff;
+            color: #1d2533;
         }
 
         .route-chip:hover {
-            transform: scale(1.05);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(12, 94, 215, 0.2);
         }
 
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px 50px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 2000;
-            text-align: center;
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(14, 32, 68, 0.38);
+            backdrop-filter: blur(14px);
+            z-index: 1300;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
         }
 
-        .loading h2 {
-            color: #1e88e5;
-            margin-bottom: 15px;
+        .loader-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
-        .loading-step {
-            margin: 10px 0;
-            font-size: 14px;
-            color: #666;
+        .loader-card {
+            width: 340px;
+            background: #ffffff;
+            border-radius: var(--card-radius);
+            padding: 32px;
+            box-shadow: 0 24px 48px rgba(15, 35, 75, 0.28);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        .loading-step.active {
-            color: #1e88e5;
-            font-weight: bold;
+        .loader-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
-        .loading-step.complete {
-            color: #4caf50;
-            font-weight: bold;
+        .loader-header img {
+            width: 50px;
+            height: 50px;
+            background: #ffffff;
+            padding: 6px;
+            border-radius: 14px;
         }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #1e88e5;
+        .loader-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--cta-dark);
+            font-weight: 700;
+        }
+
+        .loader-progress {
+            width: 100%;
+            height: 6px;
+            background: var(--cta-light);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .loader-progress-bar {
+            width: 10%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-accent));
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .loader-status {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .loader-steps {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .loader-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        .loader-step.pending {
+            opacity: 0.65;
+        }
+
+        .loader-step .step-index {
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            background: var(--cta-light);
+            color: var(--cta-blue);
+            font-weight: 600;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loader-step.active {
+            color: var(--cta-blue);
+            font-weight: 600;
         }
 
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px;
-            box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+        .loader-step.active .step-index {
+            background: rgba(25, 144, 255, 0.18);
         }
 
-        .leaflet-popup-content {
-            margin: 15px;
-            line-height: 1.6;
-            font-size: 14px;
-            max-width: 350px;
+        .loader-step.complete {
+            color: #1f8b4c;
         }
 
-        .popup-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #1e88e5;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e3f2fd;
+        .loader-step.complete .step-index {
+            background: #daf5e7;
+            color: #1f8b4c;
         }
 
-        .popup-field {
-            margin: 8px 0;
-            color: #333;
+        .loader-step.error {
+            color: #d32f2f;
+            font-weight: 600;
         }
 
-        .popup-field strong {
-            color: #555;
-            display: block;
-            margin-bottom: 5px;
+        .loader-step.error .step-index {
+            background: #fbeaea;
+            color: #d32f2f;
         }
 
         .routes-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 5px;
+            gap: 8px;
+            margin-top: 8px;
         }
 
         .route-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: none;
             cursor: pointer;
-            transition: all 0.2s;
+            background: var(--cta-light);
+            color: var(--cta-dark);
+            transition: transform 0.16s ease, box-shadow 0.16s ease;
         }
 
+        .route-badge.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+
         .route-badge:hover {
-            transform: scale(1.1);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(12, 94, 215, 0.24);
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 16px 32px rgba(15, 35, 75, 0.25);
+        }
+
+        .leaflet-popup-content {
+            margin: 16px;
+            font-size: 0.92rem;
+            color: #1d2533;
+        }
+
+        .popup-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--cta-dark);
+            font-size: 1.02rem;
+        }
+
+        .popup-field {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        .popup-field strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--cta-dark);
         }
 
         .wheelchair-yes {
-            color: #4caf50;
-            font-weight: bold;
+            color: #1f8b4c;
+            font-weight: 600;
         }
 
         .wheelchair-no {
-            color: #f44336;
-            font-weight: bold;
+            color: #d32f2f;
+            font-weight: 600;
         }
 
         .wheelchair-unknown {
-            color: #ff9800;
-            font-weight: bold;
+            color: #d17b0f;
+            font-weight: 600;
+        }
+
+        @media (max-width: 980px) {
+            .info-panel {
+                position: static;
+                width: auto;
+                margin: 16px;
+            }
+            .loader-card {
+                width: 90%;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading">
-        <h2>🚌 Loading CTA Data...</h2>
-        <div class="spinner"></div>
-        <div class="loading-step" id="step-stops">Fetching stops...</div>
-        <div class="loading-step" id="step-routes">Fetching routes...</div>
-        <div class="loading-step" id="step-trips">Mapping trips...</div>
-        <div class="loading-step" id="step-stoptimes">Resolving stop times...</div>
-        <div class="loading-step" id="step-shapes">Preparing shapes...</div>
-        <div class="loading-step" id="step-processing">Rendering map...</div>
+    <div id="loading" class="loader-overlay">
+        <div class="loader-card">
+            <div class="loader-header">
+                <img src="{{ url_for('static', path='cta_logo.png') }}" alt="CTA logo">
+                <h2>Loading CTA Data</h2>
+            </div>
+            <div class="loader-progress">
+                <div class="loader-progress-bar" id="loader-progress-bar"></div>
+            </div>
+            <div class="loader-status" id="loader-status">Warming up the data pipelines...</div>
+            <ul class="loader-steps">
+                <li class="loader-step pending" id="step-stops">
+                    <span class="step-index">1</span>
+                    <span class="step-label">Fetching stops...</span>
+                </li>
+                <li class="loader-step pending" id="step-routes">
+                    <span class="step-index">2</span>
+                    <span class="step-label">Fetching routes...</span>
+                </li>
+                <li class="loader-step pending" id="step-trips">
+                    <span class="step-index">3</span>
+                    <span class="step-label">Mapping trips...</span>
+                </li>
+                <li class="loader-step pending" id="step-stoptimes">
+                    <span class="step-index">4</span>
+                    <span class="step-label">Resolving stop times...</span>
+                </li>
+                <li class="loader-step pending" id="step-shapes">
+                    <span class="step-index">5</span>
+                    <span class="step-label">Preparing shapes...</span>
+                </li>
+                <li class="loader-step pending" id="step-processing">
+                    <span class="step-index">6</span>
+                    <span class="step-label">Rendering map...</span>
+                </li>
+            </ul>
+        </div>
     </div>
 
     <div id="map"></div>
 
-    <div class="info-panel">
-        <h1>🚌 CTA Transit Map</h1>
-        <div class="stat">
-            <strong id="stop-count">0</strong> stops
+    <aside class="info-panel">
+        <div class="panel-header">
+            <img src="{{ url_for('static', path='cta_logo.png') }}" alt="CTA logo">
+            <div class="panel-heading">
+                <h1>CTA Transit Map</h1>
+                <span>Bus routes and stop explorer</span>
+            </div>
         </div>
-        <div class="stat">
-            <strong id="route-count">0</strong> routes
+
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-label">Stops loaded</div>
+                <div class="metric-value" id="stop-count">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Routes available</div>
+                <div class="metric-value" id="route-count">0</div>
+            </div>
         </div>
-        <div class="note">
-            💡 <strong>How to use:</strong><br>
-            • Click on any stop to see routes<br>
-            • Click on a route number to draw its path<br>
-            • Compare multiple routes!<br>
-            <br>
-            🔍 Served via FastAPI — ensure the backend is running.
+
+        <div class="panel-divider"></div>
+
+        <div class="panel-notes">
+            <h2>How to explore</h2>
+            <ul>
+                <li>Click a stop marker to see all routes serving it.</li>
+                <li>Select a route badge to draw its path on the map.</li>
+                <li>Activate multiple routes to compare service overlap.</li>
+            </ul>
         </div>
-        <div class="active-routes" id="active-routes-panel" style="display: none;">
-            <h3>📍 Active Routes:</h3>
+
+        <div class="panel-divider"></div>
+
+        <div class="active-routes" id="active-routes-panel">
+            <h3>Active routes</h3>
             <div id="active-routes-list"></div>
         </div>
-    </div>
+    </aside>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         window.__INITIAL_TOKEN__ = {{ initial_token | tojson }};
         window.__INITIAL_TOKEN_EXPIRY__ = {{ token_expires_at | tojson }};
     </script>
-
     <script>
         const API_BASE = '/api/v1/gtfs';
-        const AUTH_BASE = '/api/v1/auth';
-        const TOKEN_STORAGE_KEY = 'ctaMapToken';
-        const TOKEN_EXP_STORAGE_KEY = 'ctaMapTokenExpires';
-        const TOKEN_LEEWAY_MS = 5000;
-        const SERVER_TOKEN = typeof window !== 'undefined' ? window.__INITIAL_TOKEN__ : null;
-        const SERVER_TOKEN_EXPIRY = typeof window !== 'undefined' ? window.__INITIAL_TOKEN_EXPIRY__ : null;
+const AUTH_BASE = '/api/v1/auth';
+const TOKEN_STORAGE_KEY = 'ctaMapToken';
+const TOKEN_EXP_STORAGE_KEY = 'ctaMapTokenExpires';
+const TOKEN_LEEWAY_MS = 5000;
+const SERVER_TOKEN = typeof window !== 'undefined' ? window.__INITIAL_TOKEN__ : null;
+const SERVER_TOKEN_EXPIRY = typeof window !== 'undefined' ? window.__INITIAL_TOKEN_EXPIRY__ : null;
 
-        const AUTH = {
-            token: sessionStorage.getItem(TOKEN_STORAGE_KEY) || null,
-            expiresAt: sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY)
-                ? new Date(sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY))
-                : null,
-        };
+const loaderOverlay = document.getElementById('loading');
+const loaderStatus = document.getElementById('loader-status');
+const loaderProgressBar = document.getElementById('loader-progress-bar');
 
-        function isTokenActive() {
-            if (!AUTH.token) {
-                return false;
-            }
-            if (!AUTH.expiresAt) {
-                return true;
-            }
-            return AUTH.expiresAt.getTime() - Date.now() > TOKEN_LEEWAY_MS;
+const AUTH = {
+    token: sessionStorage.getItem(TOKEN_STORAGE_KEY) || null,
+    expiresAt: sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY)
+        ? new Date(sessionStorage.getItem(TOKEN_EXP_STORAGE_KEY))
+        : null,
+};
+
+if (SERVER_TOKEN) {
+    storeToken(SERVER_TOKEN, SERVER_TOKEN_EXPIRY || null);
+}
+
+function isTokenActive() {
+    if (!AUTH.token) {
+        return false;
+    }
+    if (!AUTH.expiresAt) {
+        return true;
+    }
+    return AUTH.expiresAt.getTime() - Date.now() > TOKEN_LEEWAY_MS;
+}
+
+function storeToken(token, expiresAt) {
+    AUTH.token = token;
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+
+    if (expiresAt) {
+        const expiry = new Date(expiresAt);
+        AUTH.expiresAt = expiry;
+        sessionStorage.setItem(TOKEN_EXP_STORAGE_KEY, expiry.toISOString());
+    } else {
+        AUTH.expiresAt = null;
+        sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
+    }
+}
+
+function clearToken() {
+    AUTH.token = null;
+    AUTH.expiresAt = null;
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
+}
+
+async function requestToken(secretKey) {
+    const response = await fetch(`${AUTH_BASE}/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret_key: secretKey }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Token request failed with status ${response.status}`);
+    }
+
+    return response.json();
+}
+
+async function ensureAuthenticated() {
+    if (isTokenActive()) {
+        return;
+    }
+
+    clearToken();
+
+    while (true) {
+        const secret = window.prompt('Enter the access key to load CTA data:');
+        if (secret === null) {
+            throw new Error('Authentication cancelled by user');
         }
 
-        function storeToken(token, expiresAt) {
-            AUTH.token = token;
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
-
-            if (expiresAt) {
-                const expiry = new Date(expiresAt);
-                AUTH.expiresAt = expiry;
-                sessionStorage.setItem(TOKEN_EXP_STORAGE_KEY, expiry.toISOString());
-            } else {
-                AUTH.expiresAt = null;
-                sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
-            }
+        const trimmed = secret.trim();
+        if (!trimmed) {
+            alert('Access key cannot be empty.');
+            continue;
         }
 
-        if (SERVER_TOKEN) {
-            storeToken(SERVER_TOKEN, SERVER_TOKEN_EXPIRY || null);
+        try {
+            const tokenResponse = await requestToken(trimmed);
+            storeToken(tokenResponse.access_token, tokenResponse.expires_at);
+            break;
+        } catch (error) {
+            console.error('Authentication failed', error);
+            alert('Invalid access key. Please try again.');
         }
+    }
+}
 
-        function clearToken() {
-            AUTH.token = null;
-            AUTH.expiresAt = null;
-            sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-            sessionStorage.removeItem(TOKEN_EXP_STORAGE_KEY);
+function setLoaderStatus(message) {
+    loaderStatus.textContent = message;
+}
+
+function updateLoaderProgress(progressList) {
+    if (!Array.isArray(progressList)) {
+        return;
+    }
+
+    progressList.forEach(({ step, status }) => {
+        const element = document.getElementById(step);
+        if (!element) {
+            return;
         }
+        element.classList.remove('pending', 'active', 'complete', 'error');
+        element.classList.add(status);
+    });
 
-        async function requestToken(secretKey) {
-            const response = await fetch(`${AUTH_BASE}/token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret_key: secretKey }),
-            });
+    const total = progressList.length || 1;
+    const completed = progressList.filter(item => item.status === 'complete').length;
+    const activeIndex = progressList.findIndex(item => item.status === 'active');
 
-            if (!response.ok) {
-                throw new Error(`Token request failed with status ${response.status}`);
-            }
+    let percent = (completed / total) * 100;
+    if (activeIndex >= 0) {
+        percent = Math.max(percent, ((activeIndex) / total) * 100 + 8);
+    } else if (percent === 0) {
+        percent = 8;
+    }
+    loaderProgressBar.style.width = `${Math.min(100, percent)}%`;
+}
 
-            return response.json();
+async function fetchJson(url, errorMessage, options = {}) {
+    const config = { method: 'GET', headers: {}, ...options };
+    config.headers = { ...config.headers };
+
+    if (config.body && !(config.body instanceof FormData) && typeof config.body !== 'string') {
+        config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+        config.body = JSON.stringify(config.body);
+    }
+
+    await ensureAuthenticated();
+
+    if (AUTH.token) {
+        config.headers['Authorization'] = `Bearer ${AUTH.token}`;
+    }
+
+    let response = await fetch(url, config);
+
+    if (response.status === 401) {
+        clearToken();
+        alert('Session expired. Please enter the access key again.');
+        await ensureAuthenticated();
+        if (AUTH.token) {
+            config.headers['Authorization'] = `Bearer ${AUTH.token}`;
         }
+        response = await fetch(url, config);
+    }
 
-        async function ensureAuthenticated() {
-            if (isTokenActive()) {
+    if (!response.ok) {
+        throw new Error(`${errorMessage} (status ${response.status})`);
+    }
+
+    return response.json();
+}
+
+async function fetchBootstrap(statusOnly = false) {
+    const suffix = statusOnly ? '?status_only=1' : '';
+    return fetchJson(`${API_BASE}/bootstrap${suffix}`, 'Unable to load GTFS bootstrap data');
+}
+
+function normalizeColor(hex, fallback) {
+    if (!hex) {
+        return fallback;
+    }
+    const cleaned = hex.replace('#', '').trim();
+    if (cleaned.length === 6) {
+        return `#${cleaned}`;
+    }
+    return fallback;
+}
+
+function hasRouteGeometry(routeId) {
+    if (!DATA.routeShapes) {
+        return false;
+    }
+    const shapes = DATA.routeShapes[routeId];
+    return Array.isArray(shapes) && shapes.length > 0;
+}
+
+function normalizeWheelchairValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return 'unknown';
+    }
+    const stringValue = String(value).trim();
+    if (stringValue === '1') return 'yes';
+    if (stringValue === '2') return 'no';
+    return 'unknown';
+}
+
+function getWheelchairText(value) {
+    const normalized = normalizeWheelchairValue(value);
+    if (normalized === 'yes') return '<span class="wheelchair-yes">Accessible</span>';
+    if (normalized === 'no') return '<span class="wheelchair-no">Not accessible</span>';
+    return '<span class="wheelchair-unknown">Unknown</span>';
+}
+
+const DATA = {
+    stops: [],
+    routes: {},
+    stopToRoutes: {},
+    stopToRoutesReady: false,
+    routeShapes: {},
+    activeRoutes: new Set(),
+    routeLayers: {},
+    routeGeometries: {},
+    stats: {
+        stopCount: 0,
+        routeCount: 0,
+    },
+};
+
+let stopsRendered = false;
+let isRenderingStops = false;
+let bootstrapPollTimer = null;
+
+const map = L.map('map', {
+    zoomControl: false,
+}).setView([41.8781, -87.6298], 11);
+
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    minZoom: 10,
+}).addTo(map);
+
+const markers = L.markerClusterGroup({
+    maxClusterRadius: 45,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+});
+map.addLayer(markers);
+
+function updateMetrics() {
+    document.getElementById('stop-count').textContent = DATA.stats.stopCount.toLocaleString();
+    document.getElementById('route-count').textContent = DATA.stats.routeCount.toLocaleString();
+}
+
+function applyPayload(payload, { isFinal = false } = {}) {
+    if (!payload) {
+        return;
+    }
+
+    if (Array.isArray(payload.stops) && payload.stops.length) {
+        DATA.stops = payload.stops;
+    }
+
+    if (payload.routes) {
+        DATA.routes = payload.routes;
+    }
+
+    if (payload.route_shapes) {
+        DATA.routeShapes = payload.route_shapes;
+    }
+
+    if (payload.stop_to_routes) {
+        const mapping = {};
+        Object.entries(payload.stop_to_routes).forEach(([stopId, routes]) => {
+            mapping[stopId] = new Set(routes);
+        });
+        DATA.stopToRoutes = mapping;
+        DATA.stopToRoutesReady = Object.keys(mapping).length > 0;
+    }
+
+    DATA.stats.stopCount = payload.metadata?.stop_count ?? DATA.stops.length;
+    DATA.stats.routeCount = payload.metadata?.route_count ?? Object.keys(DATA.routes).length;
+    updateMetrics();
+
+    if (!stopsRendered && DATA.stops.length) {
+        refreshMarkers().then(() => {
+            stopsRendered = true;
+            loaderOverlay.classList.add('hidden');
+        });
+    } else if (isFinal) {
+        refreshMarkers();
+    }
+}
+
+function processBootstrapResponse(response, { fromPoll = false } = {}) {
+    if (!response) {
+        return;
+    }
+
+    updateLoaderProgress(response.progress || []);
+
+    if (response.status === 'error') {
+        setLoaderStatus(response.message || 'Failed to load CTA data.');
+        loaderOverlay.classList.remove('hidden');
+        return;
+    }
+
+    if (response.payload) {
+        const isFinal = response.status === 'ready';
+        applyPayload(response.payload, { isFinal });
+    }
+
+    if (response.status === 'warming') {
+        setLoaderStatus('Warming up CTA data...');
+    } else if (response.status === 'ready') {
+        setLoaderStatus('CTA data ready. Rendering map...');
+    }
+}
+
+function startBootstrapPolling() {
+    if (bootstrapPollTimer) {
+        return;
+    }
+
+    const poll = async () => {
+        try {
+            const statusResponse = await fetchBootstrap(true);
+            processBootstrapResponse(statusResponse, { fromPoll: true });
+
+            if (statusResponse.status === 'ready') {
+                const finalResponse = await fetchBootstrap(false);
+                processBootstrapResponse(finalResponse, { fromPoll: true });
+                bootstrapPollTimer = null;
                 return;
             }
 
-            clearToken();
-
-            while (true) {
-                const secret = window.prompt('Enter the access key to load CTA data:');
-                if (secret === null) {
-                    throw new Error('Authentication cancelled by user');
-                }
-
-                const trimmed = secret.trim();
-                if (!trimmed) {
-                    alert('Access key cannot be empty.');
-                    continue;
-                }
-
-                try {
-                    const tokenResponse = await requestToken(trimmed);
-                    storeToken(tokenResponse.access_token, tokenResponse.expires_at);
-                    break;
-                } catch (error) {
-                    console.error('Authentication failed', error);
-                    alert('Invalid access key. Please try again.');
-                }
+            if (statusResponse.status === 'error') {
+                bootstrapPollTimer = null;
+                return;
             }
+        } catch (error) {
+            console.error('Bootstrap polling failed', error);
         }
 
-        // Global data storage
-        const DATA = {
-            stops: [],
-            routes: {},
-            stopToRoutes: {},
-            routeShapes: {},
-            activeRoutes: new Set(),
-            routeLayers: {},
-            routeGeometries: {},
-            stats: {
-                stopCount: 0,
-                routeCount: 0,
-            },
-        };
+        bootstrapPollTimer = setTimeout(poll, 5000);
+    };
 
-        // Initialize the map
-        const map = L.map('map').setView([41.8781, -87.6298], 11);
+    poll();
+}
 
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-            minZoom: 10,
-        }).addTo(map);
+async function fetchRouteGeometry(routeId) {
+    if (DATA.routeGeometries[routeId]) {
+        return DATA.routeGeometries[routeId];
+    }
 
-        // Marker cluster group
-        const markers = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
+    const payload = await fetchJson(
+        `${API_BASE}/routes/${routeId}/geometry`,
+        `Unable to load geometry for route ${routeId}`,
+    );
+
+    const latlngs = (payload.points || []).map(point => [Number(point[0]), Number(point[1])]);
+    const geometry = {
+        shapeId: payload.shape_id,
+        latlngs,
+    };
+
+    DATA.routeGeometries[routeId] = geometry;
+    return geometry;
+}
+
+async function drawRoute(routeId) {
+    const route = DATA.routes[routeId];
+    if (!route) {
+        return;
+    }
+
+    const geometry = await fetchRouteGeometry(routeId);
+    if (!geometry.latlngs.length) {
+        console.warn('No geometry points returned for route:', routeId);
+        return;
+    }
+
+    const color = normalizeColor(route.route_color, '#0662c7');
+    const textColor = normalizeColor(route.route_text_color, '#ffffff');
+
+    const polyline = L.polyline(geometry.latlngs, {
+        color,
+        weight: 4,
+        opacity: 0.78,
+    }).addTo(map);
+
+    const popupText = `${route.route_short_name || route.route_id} - ${route.route_long_name || 'Route'}`;
+    polyline.bindPopup(`<strong style="color:${textColor}">${popupText}</strong>`);
+
+    DATA.routeLayers[routeId] = polyline;
+}
+
+async function toggleRoute(routeId) {
+    if (!hasRouteGeometry(routeId)) {
+        alert(`No shape data is available for route ${routeId}.`);
+        return;
+    }
+    try {
+        if (DATA.activeRoutes.has(routeId)) {
+            DATA.activeRoutes.delete(routeId);
+            if (DATA.routeLayers[routeId]) {
+                map.removeLayer(DATA.routeLayers[routeId]);
+                delete DATA.routeLayers[routeId];
+            }
+        } else {
+            DATA.activeRoutes.add(routeId);
+            await drawRoute(routeId);
+        }
+        updateActiveRoutesPanel();
+    } catch (error) {
+        console.error(`Failed to toggle route ${routeId}`, error);
+        alert(`Unable to display route ${routeId}: ${error.message}`);
+    }
+}
+
+window.toggleRoute = toggleRoute;
+
+function updateActiveRoutesPanel() {
+    const panel = document.getElementById('active-routes-panel');
+    const list = document.getElementById('active-routes-list');
+
+    if (DATA.activeRoutes.size === 0) {
+        panel.classList.remove('visible');
+        list.innerHTML = '';
+        return;
+    }
+
+    panel.classList.add('visible');
+    list.innerHTML = '';
+
+    DATA.activeRoutes.forEach(routeId => {
+        const route = DATA.routes[routeId];
+        if (route) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'route-chip';
+            chip.textContent = `x ${route.route_short_name || route.route_id}`;
+            chip.style.backgroundColor = normalizeColor(route.route_color, '#f1f5ff');
+            chip.style.color = normalizeColor(route.route_text_color, '#0b2c67');
+            chip.onclick = () => toggleRoute(routeId);
+            list.appendChild(chip);
+        }
+    });
+}
+
+async function renderStopsInBatches() {
+    const stops = DATA.stops;
+    const batchSize = 400;
+    let index = 0;
+
+    while (index < stops.length) {
+        const slice = stops.slice(index, index + batchSize);
+        slice.forEach(stop => {
+            const lat = parseFloat(stop.stop_lat);
+            const lon = parseFloat(stop.stop_lon);
+            if (Number.isNaN(lat) || Number.isNaN(lon)) {
+                return;
+            }
+
+            const marker = L.circleMarker([lat, lon], {
+                radius: 6,
+                fillColor: '#0c5ed7',
+                color: '#0b2c67',
+                weight: 1.5,
+                opacity: 0.9,
+                fillOpacity: 0.85,
+            });
+
+            const routes = DATA.stopToRoutes[stop.stop_id];
+            let routesHTML = '<em>No routes found</em>';
+
+            if (routes && routes.size > 0) {
+                routesHTML = '<div class="routes-list">';
+                const sortedRoutes = Array.from(routes).sort();
+                sortedRoutes.forEach(routeId => {
+                    const route = DATA.routes[routeId];
+                    if (route) {
+                        const bgColor = normalizeColor(route.route_color, '#f1f5ff');
+                        const textColor = normalizeColor(route.route_text_color, '#0b2c67');
+                        const geometryAvailable = hasRouteGeometry(routeId);
+                        const badgeClass = geometryAvailable ? 'route-badge' : 'route-badge disabled';
+                        const actionAttr = geometryAvailable ? `onclick="toggleRoute('${routeId}')"` : '';
+                        const badgeTitle = geometryAvailable
+                            ? `title="Show route ${route.route_short_name || route.route_id}"`
+                            : 'title="No shape data available for this route"';
+                        routesHTML += `<button class="${badgeClass}"
+                                style="background-color:${bgColor};color:${textColor};"
+                                ${badgeTitle}
+                                ${actionAttr}>
+                                ${route.route_short_name || route.route_id}
+                            </button>`;
+                    }
+                });
+                routesHTML += '</div>';
+            } else if (!DATA.stopToRoutesReady) {
+                routesHTML = '<em>Routes are still loading...</em>';
+            }
+
+            const popupContent = `
+                <div class="popup-title">${stop.stop_name || stop.stop_id}</div>
+                <div class="popup-field">
+                    <strong>Description</strong>
+                    ${stop.stop_desc || 'No description available'}
+                </div>
+                <div class="popup-field">
+                    <strong>Accessibility</strong>
+                    ${getWheelchairText(stop.wheelchair_boarding)}
+                </div>
+                <div class="popup-field">
+                    <strong>Routes serving this stop</strong>
+                    ${routesHTML}
+                </div>
+            `;
+
+            marker.bindPopup(popupContent, {
+                maxWidth: 380,
+            });
+
+            markers.addLayer(marker);
         });
 
-        function updateStep(stepId, status = 'active') {
-            const step = document.getElementById(stepId);
-            if (step) {
-                step.classList.add(status);
-            }
+        index += batchSize;
+        await new Promise(requestAnimationFrame);
+    }
+}
+
+async function refreshMarkers() {
+    if (isRenderingStops) {
+        return;
+    }
+    isRenderingStops = true;
+    markers.clearLayers();
+    await renderStopsInBatches();
+    isRenderingStops = false;
+}
+
+async function loadAllData() {
+    try {
+        setLoaderStatus('Requesting CTA data...');
+        const bootstrap = await fetchBootstrap(false);
+        processBootstrapResponse(bootstrap);
+
+        if (bootstrap.status !== 'ready') {
+            startBootstrapPolling();
         }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        loaderStatus.innerHTML = `
+            <strong>Unable to load CTA data.</strong><br>
+            ${error.message}<br>
+            <span style="font-size:0.8rem;color:#5f6b7b;">
+                Ensure the FastAPI backend is running and reachable at ${API_BASE}.
+            </span>
+        `;
+        loaderOverlay.classList.remove('hidden');
+    }
+}
 
-        function normalizeColor(hex, fallback) {
-            if (!hex) return fallback;
-            const cleaned = hex.replace('#', '').trim();
-            if (cleaned.length === 6) {
-                return `#${cleaned}`;
-            }
-            return fallback;
-        }
-
-        function normalizeWheelchairValue(value) {
-            if (value === null || value === undefined || value === '') {
-                return 'unknown';
-            }
-            const stringValue = String(value).trim();
-            if (stringValue === '1') return 'yes';
-            if (stringValue === '2') return 'no';
-            return 'unknown';
-        }
-
-        function getWheelchairText(value) {
-            const normalized = normalizeWheelchairValue(value);
-            if (normalized === 'yes') return '<span class="wheelchair-yes">♿ Accessible</span>';
-            if (normalized === 'no') return '<span class="wheelchair-no">♿ Not Accessible</span>';
-            return '<span class="wheelchair-unknown">♿ Unknown</span>';
-        }
-
-        async function fetchJson(url, errorMessage, options = {}) {
-            const config = { method: 'GET', headers: {}, ...options };
-            config.headers = { ...config.headers };
-
-            if (config.body && !(config.body instanceof FormData) && typeof config.body !== 'string') {
-                config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
-                config.body = JSON.stringify(config.body);
-            }
-
-            await ensureAuthenticated();
-
-            if (AUTH.token) {
-                config.headers['Authorization'] = `Bearer ${AUTH.token}`;
-            }
-
-            let response = await fetch(url, config);
-
-            if (response.status === 401) {
-                clearToken();
-                alert('Session expired. Please enter the access key again.');
-                await ensureAuthenticated();
-                if (AUTH.token) {
-                    config.headers['Authorization'] = `Bearer ${AUTH.token}`;
-                }
-                response = await fetch(url, config);
-            }
-
-            if (!response.ok) {
-                throw new Error(`${errorMessage} (status ${response.status})`);
-            }
-
-            return response.json();
-        }
-
-        async function fetchRouteGeometry(routeId) {
-            if (DATA.routeGeometries[routeId]) {
-                return DATA.routeGeometries[routeId];
-            }
-
-            const payload = await fetchJson(
-                `${API_BASE}/routes/${routeId}/geometry`,
-                `Unable to load geometry for route ${routeId}`,
-            );
-
-            const latlngs = (payload.points || []).map(point => [Number(point[0]), Number(point[1])]);
-            const geometry = {
-                shapeId: payload.shape_id,
-                latlngs,
-            };
-
-            DATA.routeGeometries[routeId] = geometry;
-            return geometry;
-        }
-
-        async function toggleRoute(routeId) {
-            try {
-                if (DATA.activeRoutes.has(routeId)) {
-                    DATA.activeRoutes.delete(routeId);
-                    if (DATA.routeLayers[routeId]) {
-                        map.removeLayer(DATA.routeLayers[routeId]);
-                        delete DATA.routeLayers[routeId];
-                    }
-                } else {
-                    DATA.activeRoutes.add(routeId);
-                    await drawRoute(routeId);
-                }
-                updateActiveRoutesPanel();
-            } catch (error) {
-                console.error(`Failed to toggle route ${routeId}`, error);
-                alert(`Unable to display route ${routeId}: ${error.message}`);
-            }
-        }
-
-        window.toggleRoute = toggleRoute;
-
-        async function drawRoute(routeId) {
-            const route = DATA.routes[routeId];
-            if (!route) return;
-
-            const geometry = await fetchRouteGeometry(routeId);
-            if (!geometry.latlngs.length) {
-                console.warn('No geometry points returned for route:', routeId);
-                return;
-            }
-
-            const color = normalizeColor(route.route_color, '#99999c');
-            const textColor = normalizeColor(route.route_text_color, '#ffffff');
-
-            const polyline = L.polyline(geometry.latlngs, {
-                color,
-                weight: 4,
-                opacity: 0.7,
-            }).addTo(map);
-
-            const popupText = `${route.route_short_name || route.route_id} - ${route.route_long_name || 'Route'}`;
-            polyline.bindPopup(`<strong style="color:${textColor}">${popupText}</strong>`);
-
-            DATA.routeLayers[routeId] = polyline;
-        }
-
-        function updateActiveRoutesPanel() {
-            const panel = document.getElementById('active-routes-panel');
-            const list = document.getElementById('active-routes-list');
-
-            if (DATA.activeRoutes.size === 0) {
-                panel.style.display = 'none';
-                return;
-            }
-
-            panel.style.display = 'block';
-            list.innerHTML = '';
-
-            DATA.activeRoutes.forEach(routeId => {
-                const route = DATA.routes[routeId];
-                if (route) {
-                    const chip = document.createElement('span');
-                    chip.className = 'route-chip';
-                    chip.textContent = `✕ ${route.route_short_name || route.route_id}`;
-                    chip.style.backgroundColor = normalizeColor(route.route_color, '#99999c');
-                    chip.style.color = normalizeColor(route.route_text_color, '#ffffff');
-                    chip.onclick = () => toggleRoute(routeId);
-                    list.appendChild(chip);
-                }
-            });
-        }
-
-        function displayStops() {
-            DATA.stops.forEach(stop => {
-                const lat = parseFloat(stop.stop_lat);
-                const lon = parseFloat(stop.stop_lon);
-
-                if (Number.isNaN(lat) || Number.isNaN(lon)) return;
-
-                const marker = L.circleMarker([lat, lon], {
-                    radius: 6,
-                    fillColor: '#1e88e5',
-                    color: '#0d47a1',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8,
-                });
-
-                const routes = DATA.stopToRoutes[stop.stop_id];
-                let routesHTML = '<em>No routes found</em>';
-
-                if (routes && routes.size > 0) {
-                    routesHTML = '<div class="routes-list">';
-                    const sortedRoutes = Array.from(routes).sort();
-                    sortedRoutes.forEach(routeId => {
-                        const route = DATA.routes[routeId];
-                        if (route) {
-                            const bgColor = normalizeColor(route.route_color, '#99999c');
-                            const textColor = normalizeColor(route.route_text_color, '#ffffff');
-                            routesHTML += `<span class="route-badge"
-                                style="background-color: ${bgColor}; color: ${textColor};"
-                                onclick="toggleRoute('${routeId}')"
-                                title="Click to show route ${route.route_short_name || route.route_id}">${route.route_short_name || route.route_id}</span>`;
-                        }
-                    });
-                    routesHTML += '</div>';
-                }
-
-                const popupContent = `
-                    <div class="popup-title">${stop.stop_name || stop.stop_id}</div>
-                    <div class="popup-field">
-                        <strong>Description:</strong>
-                        ${stop.stop_desc || 'No description'}
-                    </div>
-                    <div class="popup-field">
-                        <strong>Accessibility:</strong>
-                        ${getWheelchairText(stop.wheelchair_boarding)}
-                    </div>
-                    <div class="popup-field">
-                        <strong>Routes serving this stop:</strong>
-                        ${routesHTML}
-                    </div>
-                `;
-
-                marker.bindPopup(popupContent, {
-                    maxWidth: 400,
-                    className: 'custom-popup',
-                });
-
-                markers.addLayer(marker);
-            });
-
-            map.addLayer(markers);
-        }
-
-        async function loadAllData() {
-            try {
-                updateStep('step-stops', 'active');
-                const bootstrap = await fetchJson(`${API_BASE}/bootstrap`, 'Unable to load GTFS bootstrap data');
-                updateStep('step-stops', 'complete');
-
-                DATA.stops = bootstrap.stops || [];
-                DATA.routes = bootstrap.routes || {};
-                DATA.routeShapes = bootstrap.route_shapes || {};
-                DATA.stopToRoutes = {};
-
-                Object.entries(bootstrap.stop_to_routes || {}).forEach(([stopId, routes]) => {
-                    DATA.stopToRoutes[stopId] = new Set(routes);
-                });
-
-                DATA.stats.stopCount = bootstrap.metadata?.stop_count ?? DATA.stops.length;
-                DATA.stats.routeCount = bootstrap.metadata?.route_count ?? Object.keys(DATA.routes).length;
-
-                updateStep('step-routes', 'complete');
-                updateStep('step-trips', 'complete');
-                updateStep('step-stoptimes', 'complete');
-                updateStep('step-shapes', 'complete');
-
-                updateStep('step-processing', 'active');
-                displayStops();
-
-                document.getElementById('stop-count').textContent = DATA.stats.stopCount.toLocaleString();
-                document.getElementById('route-count').textContent = DATA.stats.routeCount.toLocaleString();
-
-                document.getElementById('loading').style.display = 'none';
-                updateStep('step-processing', 'complete');
-
-                console.log('🎉 All data loaded successfully from FastAPI!');
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('loading').innerHTML = `
-                    <h2 style="color: #f44336;">Error Loading Data</h2>
-                    <p>${error.message}</p>
-                    <p style="font-size: 12px; margin-top: 10px;">
-                        Ensure the FastAPI server is running and reachable at <code>${API_BASE}</code>.
-                    </p>
-                `;
-            }
-        }
-
-        loadAllData();
-    </script>
+loadAllData();    </script>
 </body>
 </html>
+
+
+
+
+
+
+
+

@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.dependencies import get_loader, require_token
+from backend.app.models.bootstrap import BootstrapResponse
 from backend.app.models.gtfs import (
-    BootstrapPayload,
     GTFSResource,
     Route,
     RouteGeometry,
@@ -12,6 +12,7 @@ from backend.app.models.gtfs import (
     Stop,
     Trip,
 )
+from backend.app.services.bootstrap_cache import get_bootstrap_cache
 from backend.app.services.gtfs_loader import GTFSDataLoader
 
 router = APIRouter()
@@ -82,27 +83,13 @@ def list_resources(
     return resources
 
 
-@router.get("/bootstrap", response_model=BootstrapPayload)
+@router.get("/bootstrap", response_model=BootstrapResponse)
 def bootstrap(
-    loader: GTFSDataLoader = Depends(get_loader),
+    status_only: bool = Query(False, description="Return only status/progress without payload"),
     _: dict = Depends(require_token),
-) -> BootstrapPayload:
-    stops = [Stop(**row) for row in loader.get_stops_list()]
-    routes_raw = loader.get_routes_dict()
-    routes = {route_id: Route(**data) for route_id, data in routes_raw.items()}
-    route_shapes = loader.get_route_shapes_map()
-    stop_to_routes = loader.get_stop_route_map()
-    metadata = {
-        "stop_count": len(stops),
-        "route_count": len(routes),
-    }
-    return BootstrapPayload(
-        stops=stops,
-        routes=routes,
-        route_shapes=route_shapes,
-        stop_to_routes=stop_to_routes,
-        metadata=metadata,
-    )
+) -> BootstrapResponse:
+    cache = get_bootstrap_cache()
+    return cache.get_response(include_payload=not status_only)
 
 
 @router.get("/routes/{route_id}/geometry", response_model=RouteGeometry)
