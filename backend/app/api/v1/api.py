@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
-from .endpoints import auth, gtfs
+from .endpoints import assaults, auth, gtfs
 
 router = APIRouter()
 router.include_router(gtfs.router, prefix="/gtfs", tags=["GTFS"])
 router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+router.include_router(assaults.router, prefix="/assaults", tags=["Assaults"])
