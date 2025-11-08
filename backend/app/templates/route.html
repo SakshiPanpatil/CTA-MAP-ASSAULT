@@ -58,6 +58,7 @@
             top: clamp(12px, 3vh, 24px);
             right: clamp(12px, 4vw, 24px);
             width: min(340px, calc(100vw - 48px));
+            max-height: calc(100vh - clamp(24px, 6vh, 48px));
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
             border-radius: var(--card-radius);
@@ -67,6 +68,7 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            overflow-y: auto;
         }
 
         .panel-header {
@@ -657,10 +659,6 @@
 
         <div class="panel-divider"></div>
 
-        <div class="active-routes" id="active-routes-panel">
-            <h3>Active routes</h3>
-            <div id="active-routes-list"></div>
-        </div>
     </aside>
         <div class="legend-panel">
             <h2>Assault Count Legend</h2>
@@ -683,6 +681,11 @@
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#b71c1c;"></span>
                 20+ incidents
+            </div>
+            <div class="panel-divider" style="margin:12px 0;"></div>
+            <div class="active-routes" id="active-routes-panel">
+                <h3>Active routes</h3>
+                <div id="active-routes-list"></div>
             </div>
         </div>
     </div>
@@ -1373,12 +1376,12 @@ function handleAssaultMarkerVisibility() {
             <div class="popup-field"><strong>Area Coverage:</strong> ~${(config.cellSize * 69).toFixed(2)} miles</div>
         `;
 
-        // Show detailed incident cards (show more details when count is low)
-        const maxToShow = cluster.count <= 3 ? cluster.count : Math.min(5, cluster.count);
-        if (maxToShow > 0) {
+        // Show detailed incident cards (scrollable for large clusters)
+        if (cluster.count > 0) {
             popupContent += `<div style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--cta-dark);">Incident Details:</div>`;
+            popupContent += `<div style="max-height: 320px; overflow-y: auto; padding-right: 4px;">`;
 
-            cluster.incidents.slice(0, maxToShow).forEach((inc, idx) => {
+            cluster.incidents.forEach((inc, idx) => {
                 const location = inc.approximate_address || inc.location_type || 'CTA bus location';
                 const eventType = inc.event_type || 'Assault';
                 const eventGroup = inc.event_type_group || 'Assault';
@@ -1431,14 +1434,7 @@ function handleAssaultMarkerVisibility() {
                     </div>
                 `;
             });
-
-            if (cluster.count > maxToShow) {
-                popupContent += `
-                    <div style="margin-top: 10px; text-align: center; color: #666; font-size: 0.8rem; font-style: italic;">
-                        ... and ${cluster.count - maxToShow} more incident${cluster.count - maxToShow > 1 ? 's' : ''} in this area
-                    </div>
-                `;
-            }
+            popupContent += `</div>`;
         }
 
         marker.bindPopup(popupContent, { maxWidth: 450, maxHeight: 500 });
