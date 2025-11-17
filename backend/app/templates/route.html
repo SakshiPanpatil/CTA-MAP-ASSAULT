@@ -202,6 +202,45 @@
             box-shadow: 0 6px 12px rgba(15, 30, 60, 0.18);
         }
 
+        .safety-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .safety-pill .count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        .safety-details {
+            display: none;
+            margin-top: 10px;
+            border-radius: 8px;
+            background: #f7f9fd;
+            padding: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .safety-details.expanded {
+            display: block;
+        }
+
+        .safety-details .incident-card {
+            background: #fff;
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 2px 4px rgba(15, 30, 60, 0.1);
+            margin-bottom: 8px;
+        }
+
         .active-routes {
             display: none;
             flex-direction: column;
@@ -707,6 +746,7 @@ const TOKEN_LEEWAY_MS = 5000;
 const SERVER_TOKEN = typeof window !== 'undefined' ? window.__INITIAL_TOKEN__ : null;
 const SERVER_TOKEN_EXPIRY = typeof window !== 'undefined' ? window.__INITIAL_TOKEN_EXPIRY__ : null;
 const STOP_VISIBILITY_ZOOM = 13;
+const STOP_SAFETY_RADIUS_KM = 0.4;
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -722,6 +762,59 @@ function getStopRadius(zoom) {
     if (zoom < 16) return 7;
     if (zoom < 17) return 8;
     return 9;
+}
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const toRad = deg => (deg * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function summarizeStopSafety(lat, lon) {
+    const source = DATA.filteredAssaults.length > 0 ? DATA.filteredAssaults : DATA.assaults;
+    const incidents = source.filter(incident => {
+        const alat = parseFloat(incident.latitude);
+        const alon = parseFloat(incident.longitude);
+        if (Number.isNaN(alat) || Number.isNaN(alon)) {
+            return false;
+        }
+        return haversineDistance(lat, lon, alat, alon) <= STOP_SAFETY_RADIUS_KM;
+    });
+
+    const count = incidents.length;
+    let label = 'Calm area';
+    let color = '#1f8b4c';
+    if (count >= 10) {
+        label = 'Hotspot';
+        color = '#b71c1c';
+    } else if (count >= 5) {
+        label = 'Elevated';
+        color = '#fb8c00';
+    } else if (count >= 1) {
+        label = 'Watchful';
+        color = '#fdd835';
+    }
+    return {
+        count,
+        label,
+        color,
+        incidents,
+    };
+}
+
+function toggleSafetyDetails(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) {
+        return;
+    }
+    el.classList.toggle('expanded');
 }
 
 // Grid clustering configuration based on zoom
@@ -1727,6 +1820,45 @@ async function renderStopsInBatches() {
                 routesHTML = '<em>Routes are still loading...</em>';
             }
 
+            const safetySnapshot = summarizeStopSafety(lat, lon);
+            const safetyTargetId = `safety-${stop.stop_id}`;
+            let safetyDetailsHTML = '';
+
+            if (safetySnapshot.count > 0) {
+                const detailCards = safetySnapshot.incidents
+                    .map((incident, idx) => {
+                        const eventType = incident.event_type || 'Assault';
+                        const date = incident.event_date || 'Unknown date';
+                        const time = incident.event_time ? ` at ${incident.event_time}` : '';
+                        const injuries = Number(incident.total_injuries) || 0;
+                        const location = incident.approximate_address || incident.location_type || 'CTA bus location';
+                        return `
+                            <div class="incident-card">
+                                <div style="font-weight:600; color:var(--cta-dark); font-size:0.85rem;">${idx + 1}. ${escapeHtml(eventType)}</div>
+                                <div style="font-size:0.78rem; color:#556; margin-top:4px;"><strong>When:</strong> ${escapeHtml(`${date}${time}`)}</div>
+                                <div style="font-size:0.78rem; color:#556;"><strong>Where:</strong> ${escapeHtml(location)}</div>
+                                ${injuries > 0 ? `<div style="font-size:0.78rem; color:#b71c1c;"><strong>Injuries:</strong> ${injuries}</div>` : ''}
+                            </div>
+                        `;
+                    })
+                    .join('');
+
+                safetyDetailsHTML = `
+                    <button type="button"
+                        onclick="toggleSafetyDetails('${safetyTargetId}')"
+                        style="margin-top:8px;background:transparent;border:0;color:${safetySnapshot.color};font-weight:600;cursor:pointer;">
+                        View ${safetySnapshot.count} nearby assault${safetySnapshot.count > 1 ? 's' : ''}
+                    </button>
+                    <div class="safety-details" id="${safetyTargetId}">
+                        ${detailCards}
+                    </div>
+                `;
+            } else {
+                safetyDetailsHTML = `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">
+                    No reported assaults within ${(STOP_SAFETY_RADIUS_KM * 0.62).toFixed(2)} miles.
+                </div>`;
+            }
+
             const popupContent = `
                 <div class="popup-title">${stop.stop_name || stop.stop_id}</div>
                 <div class="popup-field">
@@ -1736,6 +1868,14 @@ async function renderStopsInBatches() {
                 <div class="popup-field">
                     <strong>Accessibility</strong>
                     ${getWheelchairText(stop.wheelchair_boarding)}
+                </div>
+                <div class="popup-field">
+                    <strong>Safety Snapshot</strong>
+                    <div class="safety-pill" style="background:${safetySnapshot.color};">
+                        ${safetySnapshot.label}
+                        <span class="count">${safetySnapshot.count}</span>
+                    </div>
+                    ${safetyDetailsHTML}
                 </div>
                 <div class="popup-field">
                     <strong>Routes serving this stop</strong>
