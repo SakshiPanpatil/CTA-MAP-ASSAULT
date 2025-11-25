@@ -1,0 +1,25 @@
+ Volume in drive C has no label.
+ Volume Serial Number is 1213-614D
+
+ Directory of C:\Users\azeez\PROJECTS\CTA-MAP-ASSAULT
+
+11/24/2025  09:27 PM    <DIR>          .
+11/20/2025  07:56 PM    <DIR>          ..
+11/24/2025  08:26 PM    <DIR>          .claude
+11/24/2025  08:25 PM               415 .env
+11/24/2025  09:26 PM    <DIR>          .git
+10/30/2025  07:13 PM               447 .gitignore
+10/30/2025  07:12 PM    <DIR>          .venv
+10/30/2025  07:06 PM    <DIR>          backend
+10/30/2025  09:39 PM             2,269 build_cache.py
+11/07/2025  06:57 PM         3,160,366 Cleaned_CTA_Bus_Data.csv
+10/30/2025  07:44 PM           120,931 CTA_LOGO.png
+10/30/2025  09:39 PM    <DIR>          data
+11/24/2025  09:29 PM                 0 filelist.txt
+10/30/2025  06:45 PM             1,094 LICENSE
+11/07/2025  07:03 PM    <DIR>          notebook
+11/22/2025  08:21 PM                 0 nul
+10/30/2025  08:42 PM             2,354 README.md
+11/24/2025  07:59 PM               149 requirements.txt
+              10 File(s)      3,288,025 bytes
+               8 Dir(s)  878,503,817,216 bytes free

@@ -4,7 +4,13 @@
       "Bash(python:*)",
       "Bash(cat:*)",
       "Bash(curl:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(findstr /i \"index.html\")",
+      "Bash(pip install reportlab plotly kaleido)",
+      "Bash(pip install openai)",
+      "Bash(ollama list:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
