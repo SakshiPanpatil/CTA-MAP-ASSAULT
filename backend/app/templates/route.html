@@ -689,11 +689,7 @@
                     Clear All Filters
                 </button>
             </div>
-            <div style="margin-top: 8px; padding: 8px; background: #e3f2fd; border-radius: 6px; font-size: 0.75rem; color: var(--cta-blue); text-align: center;">
-                Filters apply automatically as you select
-            </div>
-
-            <div id="filter-status" style="margin-top: 10px; font-size: 0.8rem; color: var(--cta-blue); text-align: center; font-weight: 600;"></div>
+            <!-- Filter status moved to console for professional UI -->
         </div>
 
         <div class="panel-divider"></div>
@@ -1098,7 +1094,12 @@ function hideLoadingOverlay() {
 async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.4) {
     await ensureAuthenticated();
 
-    const overlay = showLoadingOverlay('Generating Safety Analysis Report...');
+    const overlay = showLoadingOverlay(`Generating Safety Report: ${stopName}...`);
+
+    console.log(`%c🚏 STOP SAFETY REPORT`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
+    console.log(`   Stop: ${stopName} (ID: ${stopId})`);
+    console.log(`   Location: (${stopLat.toFixed(4)}, ${stopLon.toFixed(4)})`);
+    console.log(`   Radius: ${radiusKm}km`);
 
     const url = `${REPORTS_BASE}/stop/${encodeURIComponent(stopId)}?` +
         `stop_name=${encodeURIComponent(stopName)}&` +
@@ -1118,6 +1119,8 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
         }
 
         const blob = await response.blob();
+        console.log(`   ✅ PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
@@ -1127,10 +1130,12 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
+        console.log(`   💾 Download started: CTA_Stop_Safety_Report_${stopId}_${stopName.replace(/\s+/g, '_')}.pdf`);
         hideLoadingOverlay();
     } catch (error) {
         hideLoadingOverlay();
-        console.error('PDF download failed:', error);
+        console.log(`%c❌ REPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
+        console.error('   Error details:', error);
         alert('Failed to generate PDF report. Please try again.');
     }
 }
@@ -1138,7 +1143,14 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
 async function downloadAssaultClusterPDF(incidentIds) {
     await ensureAuthenticated();
 
-    const overlay = showLoadingOverlay('Generating Assault Cluster Report...');
+    // Get filter context for professional overlay message
+    const filterContext = DATA.filters.eventType || DATA.filters.eventGroup || 'Selected Incidents';
+    const overlay = showLoadingOverlay(`Generating Analysis Report: ${filterContext}...`);
+
+    console.log(`%c📊 CLUSTER REPORT GENERATION`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
+    console.log(`   Filter: ${filterContext}`);
+    console.log(`   Incidents: ${incidentIds.length}`);
+    console.log(`   Status: Requesting PDF from backend...`);
 
     try {
         const response = await fetch(`${REPORTS_BASE}/assault-cluster`, {
@@ -1155,6 +1167,8 @@ async function downloadAssaultClusterPDF(incidentIds) {
         }
 
         const blob = await response.blob();
+        console.log(`   ✅ PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
@@ -1164,10 +1178,12 @@ async function downloadAssaultClusterPDF(incidentIds) {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
+        console.log(`   💾 Download started: CTA_Assault_Cluster_Report_${incidentIds.length}_incidents.pdf`);
         hideLoadingOverlay();
     } catch (error) {
         hideLoadingOverlay();
-        console.error('PDF download failed:', error);
+        console.log(`%c❌ REPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
+        console.error('   Error details:', error);
         alert('Failed to generate PDF report. Please try again.');
     }
 }
@@ -1447,10 +1463,7 @@ function applyAssaultFilters() {
         return true;
     });
 
-    console.log(`Filtered: ${DATA.filteredAssaults.length} of ${DATA.assaults.length}`);  // Debug
-
-    // Update filter status message
-    const statusEl = document.getElementById('filter-status');
+    // Professional console logging for filter status
     const hasFilters = DATA.filters.eventType || DATA.filters.eventGroup || DATA.filters.year;
 
     if (hasFilters) {
@@ -1459,12 +1472,12 @@ function applyAssaultFilters() {
         if (DATA.filters.eventGroup) activeFilters.push(`Category: ${DATA.filters.eventGroup}`);
         if (DATA.filters.year) activeFilters.push(`Year: ${DATA.filters.year}`);
 
-        statusEl.innerHTML = `<b>Active Filters:</b> ${activeFilters.join(' + ')}<br/>` +
-                           `<b>Showing ${DATA.filteredAssaults.length} of ${DATA.assaults.length} incidents</b>`;
-        statusEl.style.color = 'var(--cta-blue)';
+        console.log(`%c🔍 FILTERS ACTIVE`, 'color: #0c5ed7; font-weight: bold; font-size: 12px;');
+        console.log(`   ${activeFilters.join(' + ')}`);
+        console.log(`   📊 Showing ${DATA.filteredAssaults.length} of ${DATA.assaults.length} incidents (${(DATA.filteredAssaults.length/DATA.assaults.length*100).toFixed(1)}%)`);
     } else {
-        statusEl.innerHTML = `<b>Showing all ${DATA.assaults.length} incidents</b>`;
-        statusEl.style.color = 'var(--text-color)';
+        console.log(`%c📊 ALL INCIDENTS`, 'color: #666; font-weight: bold; font-size: 12px;');
+        console.log(`   Showing all ${DATA.assaults.length} incidents (no filters applied)`);
     }
 
     // Update metrics and map
@@ -1615,7 +1628,7 @@ function handleAssaultMarkerVisibility() {
 
         // Build popup with incident details
         let popupContent = `
-            <div class="popup-title">${cluster.count === 1 ? 'Assault Incident' : 'Assault Cluster'}</div>
+            <div class="popup-title">${cluster.count === 1 ? 'Incident' : 'Incident Cluster'}</div>
             <div class="popup-field"><strong>Total Incidents:</strong> ${cluster.count}</div>
             <div class="popup-field"><strong>Total Injuries:</strong> ${cluster.totalInjuries}</div>
             <div class="popup-field"><strong>Area Coverage:</strong> ~${(config.cellSize * 69).toFixed(2)} miles</div>
@@ -1628,8 +1641,8 @@ function handleAssaultMarkerVisibility() {
 
             cluster.incidents.forEach((inc, idx) => {
                 const location = inc.approximate_address || inc.location_type || 'CTA bus location';
-                const eventType = inc.event_type || 'Assault';
-                const eventGroup = inc.event_type_group || 'Assault';
+                const eventType = inc.event_type || 'Incident';
+                const eventGroup = inc.event_type_group || 'Incident';
                 const date = inc.event_date || 'Unknown date';
                 const time = inc.event_time || '';
                 const description = inc.description || '';

@@ -10,7 +10,8 @@
       "Bash(pip install reportlab plotly kaleido)",
       "Bash(pip install openai)",
       "Bash(ollama list:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
