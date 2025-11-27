@@ -11,7 +11,8 @@
       "Bash(pip install openai)",
       "Bash(ollama list:*)",
       "Bash(timeout:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

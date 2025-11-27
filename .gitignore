@@ -1,4 +1,3 @@
-@"
 # Node + Next.js
 node_modules/
 cta-transit-app/node_modules/
@@ -10,9 +9,36 @@ out/
 # FastAPI / Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .venv/
+venv/
+env/
 .env
 .env.*
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.jupyter/
+*.nbconvert.ipynb
+
+# ML / Data Science
+test_results/
+notebooks/test_results/
+model_comparison_results.csv
+*.pkl
+*.h5
+*.hdf5
+*.model
+*.joblib
+*.pt
+*.pth
+mlruns/
+.mlflow/
 
 # GTFS data exports
 cta-transit-app/public/data/*.txt
@@ -37,4 +63,23 @@ yarn-debug.log*
 Thumbs.db
 .vscode/
 .idea/
-"@ | Out-File -Encoding utf8 .gitignore
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+
+# Large files (plots/images from analysis)
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+!static/**/*.png
+!static/**/*.jpg
+!static/**/*.svg

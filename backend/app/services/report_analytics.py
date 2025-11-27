@@ -5,6 +5,7 @@ Generates robust data analysis and visualizations that never fail.
 from __future__ import annotations
 
 import io
+import re
 from collections import Counter
 from datetime import datetime
 from typing import Any
@@ -62,26 +63,51 @@ def filter_assaults_by_radius(
 
 
 def parse_assault_date(date_str: str | None) -> datetime | None:
-    """Parse assault date string with multiple format support."""
+    """Parse assault date string with robust format coverage."""
     if not date_str:
         return None
+
+    raw = str(date_str).strip()
+    if not raw:
+        return None
+
+    # Normalize common punctuation and remove ordinal suffixes (e.g., "1st", "2nd")
+    cleaned = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", raw, flags=re.IGNORECASE)
+    cleaned = cleaned.replace(",", " ")
+
+    # Drop time component if present (ISO timestamps)
+    if "T" in cleaned:
+        cleaned = cleaned.split("T", 1)[0]
+
+    cleaned = " ".join(cleaned.split())  # collapse duplicate whitespace
+
+    formats = [
+        "%Y %B %d",
+        "%Y %b %d",
+        "%B %d %Y",
+        "%b %d %Y",
+        "%d %B %Y",
+        "%d %b %Y",
+        "%Y-%m-%d",
+        "%m-%d-%Y",
+        "%m-%d-%y",
+        "%m/%d/%Y",
+        "%m/%d/%y",
+        "%Y/%m/%d",
+        "%Y.%m.%d",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(cleaned, fmt)
+        except ValueError:
+            continue
+
     try:
-        date_str = str(date_str).strip()
-        parts = date_str.split()
-        if len(parts) >= 3:
-            year = int(parts[0])
-            month_name = parts[1].capitalize()
-            day = int(parts[2])
-            month_map = {
-                "January": 1, "February": 2, "March": 3, "April": 4,
-                "May": 5, "June": 6, "July": 7, "August": 8,
-                "September": 9, "October": 10, "November": 11, "December": 12,
-            }
-            month = month_map.get(month_name, 1)
-            return datetime(year, month, day)
-    except (ValueError, AttributeError, KeyError):
-        pass
-    return None
+        # Last resort: ISO-style parse on the raw value
+        return datetime.fromisoformat(raw.split()[0])
+    except (ValueError, TypeError):
+        return None
 
 
 def parse_time(time_str: str | None) -> int | None:
@@ -214,6 +240,8 @@ def create_severity_distribution(assaults: list[dict[str, Any]]) -> io.BytesIO:
 
     bars = ax.bar(levels, counts, color=colors_for_bars, edgecolor="white", linewidth=2.5, alpha=0.9)
 
+    # Add count labels on bars
+    max_count = max(counts) if counts else 0
     for bar in bars:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width() / 2.0, height + 0.5,
@@ -222,12 +250,16 @@ def create_severity_distribution(assaults: list[dict[str, Any]]) -> io.BytesIO:
 
     ax.set_xlabel("Severity Level (1=Low, 5=Critical)", fontsize=12, fontweight="bold", color=COLORS["primary"])
     ax.set_ylabel("Number of Incidents", fontsize=12, fontweight="bold", color=COLORS["primary"])
-    ax.set_title("Incident Severity Distribution", fontsize=14, fontweight="bold", pad=15, color=COLORS["primary"])
+    ax.set_title("Incident Severity Distribution", fontsize=14, fontweight="bold", pad=20, color=COLORS["primary"])
     ax.set_xticks(levels)
     ax.set_xticklabels([f"Level {l}" for l in levels])
     ax.grid(axis="y", alpha=0.3, linestyle="--")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+
+    # Add extra space at top for labels to not collide with title
+    if max_count > 0:
+        ax.set_ylim(0, max_count * 1.15)
 
     plt.tight_layout()
     buf = io.BytesIO()
@@ -388,6 +420,10 @@ def get_date_range(assaults: list[dict[str, Any]]) -> str:
     if not dates:
         return "Date range unavailable"
 
-    min_date = min(dates)
-    max_date = max(dates)
-    return f"{min_date.strftime('%B %d, %Y')} - {max_date.strftime('%B %d, %Y')}"
+    dates.sort()
+    start, end = dates[0], dates[-1]
+
+    if start.date() == end.date():
+        return start.strftime("%B %d, %Y")
+
+    return f"{start.strftime('%B %d, %Y')} - {end.strftime('%B %d, %Y')}"

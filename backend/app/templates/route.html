@@ -661,7 +661,7 @@
         <div class="panel-divider"></div>
 
         <div class="assault-filters">
-            <h2 style="font-size: 0.95rem; margin: 0 0 12px 0; color: var(--cta-dark); font-weight: 600;">Filter Assaults</h2>
+            <h2 style="font-size: 0.95rem; margin: 0 0 12px 0; color: var(--cta-dark); font-weight: 600;">Filters</h2>
 
             <div style="margin-bottom: 12px;">
                 <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Event Type</label>
@@ -678,10 +678,15 @@
             </div>
 
             <div style="margin-bottom: 12px;">
-                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Year</label>
-                <select id="filter-year" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: #fff;">
-                    <option value="">All Years</option>
-                </select>
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Year Range</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <select id="filter-year-start" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: #fff;">
+                        <option value="">Start Year</option>
+                    </select>
+                    <select id="filter-year-end" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: #fff;">
+                        <option value="">End Year</option>
+                    </select>
+                </div>
             </div>
 
             <div style="display: flex; gap: 8px;">
@@ -698,23 +703,23 @@
         <div class="legend-panel">
             <h2>Assault Count Legend</h2>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#4caf50;"></span>
+                <span class="legend-dot" style="background:#2f7d32;"></span>
                 1 incident
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#66bb6a;"></span>
-                2–4 incidents
+                <span class="legend-dot" style="background:#4f8f2f;"></span>
+                2-4 incidents
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#fdd835;"></span>
-                5–9 incidents
+                <span class="legend-dot" style="background:#d4a017;"></span>
+                5-9 incidents
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#fb8c00;"></span>
-                10–19 incidents
+                <span class="legend-dot" style="background:#c1440e;"></span>
+                10-19 incidents
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#b71c1c;"></span>
+                <span class="legend-dot" style="background:#2b2b2b;"></span>
                 20+ incidents
             </div>
             <div class="panel-divider" style="margin:12px 0;"></div>
@@ -775,7 +780,20 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 function hasActiveAssaultFilters() {
-    return Boolean(DATA.filters.eventType || DATA.filters.eventGroup || DATA.filters.year);
+    return Boolean(DATA.filters.eventType || DATA.filters.eventGroup || DATA.filters.yearStart || DATA.filters.yearEnd);
+}
+
+// Debounce utility - delays execution until user stops changing for specified time
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        console.log(`⏱️ Filter update queued... (applying in ${delay/1000}s)`);
+        timeoutId = setTimeout(() => {
+            console.log('✅ Applying filter now...');
+            func.apply(this, args);
+        }, delay);
+    };
 }
 
 function getAssaultsToShow() {
@@ -845,31 +863,31 @@ function getCountStyle(count, zoom) {
 
     if (count >= 20) {
         size = Math.min(50, 35 + zoom * 1.2);
-        bgColor = '#b71c1c';
+        bgColor = '#2b2b2b'; // critical (black)
         textColor = '#ffffff';
         fontSize = '1.0rem';
         borderWidth = 3;
     } else if (count >= 10) {
         size = Math.min(42, 30 + zoom * 1);
-        bgColor = '#fb8c00';
+        bgColor = '#c1440e'; // high (red-brown)
         textColor = '#ffffff';
         fontSize = '0.95rem';
         borderWidth = 3;
     } else if (count >= 5) {
         size = Math.min(36, 26 + zoom * 0.8);
-        bgColor = '#fdd835';
+        bgColor = '#d4a017'; // elevated (amber)
         textColor = '#000000';
         fontSize = '0.85rem';
         borderWidth = 2;
     } else if (count >= 2) {
         size = Math.min(30, 22 + zoom * 0.6);
-        bgColor = '#66bb6a';
+        bgColor = '#4f8f2f'; // guarded (olive)
         textColor = '#ffffff';
         fontSize = '0.8rem';
         borderWidth = 2;
     } else {
         size = Math.min(24, 18 + zoom * 0.5);
-        bgColor = '#4caf50';
+        bgColor = '#2f7d32'; // low (green)
         textColor = '#ffffff';
         fontSize = '0.75rem';
         borderWidth = 2;
@@ -1258,7 +1276,8 @@ const DATA = {
     filters: {
         eventType: '',
         eventGroup: '',
-        year: '',
+        yearStart: '',
+        yearEnd: '',
     },
     stats: {
         stopCount: 0,
@@ -1417,14 +1436,23 @@ function populateFilterDropdowns() {
         groupSelect.appendChild(option);
     });
 
-    // Populate year dropdown
-    const yearSelect = document.getElementById('filter-year');
-    yearSelect.innerHTML = '<option value="">All Years</option>';
-    Array.from(years).sort().reverse().forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        yearSelect.appendChild(option);
+    // Populate year range dropdowns
+    const yearStartSelect = document.getElementById('filter-year-start');
+    const yearEndSelect = document.getElementById('filter-year-end');
+    yearStartSelect.innerHTML = '<option value="">Start Year</option>';
+    yearEndSelect.innerHTML = '<option value="">End Year</option>';
+
+    const sortedYears = Array.from(years).sort();
+    sortedYears.forEach(year => {
+        const optionStart = document.createElement('option');
+        optionStart.value = year;
+        optionStart.textContent = year;
+        yearStartSelect.appendChild(optionStart);
+
+        const optionEnd = document.createElement('option');
+        optionEnd.value = year;
+        optionEnd.textContent = year;
+        yearEndSelect.appendChild(optionEnd);
     });
 
     filtersPopulated = true;  // Mark as populated
@@ -1435,7 +1463,8 @@ function applyAssaultFilters() {
     // Get current filter values
     DATA.filters.eventType = document.getElementById('filter-event-type').value;
     DATA.filters.eventGroup = document.getElementById('filter-event-group').value;
-    DATA.filters.year = document.getElementById('filter-year').value;
+    DATA.filters.yearStart = document.getElementById('filter-year-start').value;
+    DATA.filters.yearEnd = document.getElementById('filter-year-end').value;
 
     console.log('Filters applied:', DATA.filters);  // Debug
 
@@ -1451,11 +1480,19 @@ function applyAssaultFilters() {
             return false;  // Doesn't match Category, exclude
         }
 
-        // Step 3: Check Year filter (if selected)
-        if (DATA.filters.year && incident.event_date) {
+        // Step 3: Check Year Range filter (if selected)
+        if ((DATA.filters.yearStart || DATA.filters.yearEnd) && incident.event_date) {
             const incidentYear = incident.event_date.split(' ')[0];
-            if (incidentYear !== DATA.filters.year) {
-                return false;  // Doesn't match Year, exclude
+            if (incidentYear) {
+                const yearNum = parseInt(incidentYear);
+                if (!isNaN(yearNum)) {
+                    if (DATA.filters.yearStart && yearNum < parseInt(DATA.filters.yearStart)) {
+                        return false;  // Before start year, exclude
+                    }
+                    if (DATA.filters.yearEnd && yearNum > parseInt(DATA.filters.yearEnd)) {
+                        return false;  // After end year, exclude
+                    }
+                }
             }
         }
 
@@ -1464,13 +1501,20 @@ function applyAssaultFilters() {
     });
 
     // Professional console logging for filter status
-    const hasFilters = DATA.filters.eventType || DATA.filters.eventGroup || DATA.filters.year;
+    const hasFilters = DATA.filters.eventType || DATA.filters.eventGroup || DATA.filters.yearStart || DATA.filters.yearEnd;
 
     if (hasFilters) {
         const activeFilters = [];
         if (DATA.filters.eventType) activeFilters.push(`Type: ${DATA.filters.eventType}`);
         if (DATA.filters.eventGroup) activeFilters.push(`Category: ${DATA.filters.eventGroup}`);
-        if (DATA.filters.year) activeFilters.push(`Year: ${DATA.filters.year}`);
+        if (DATA.filters.yearStart || DATA.filters.yearEnd) {
+            const yearRange = DATA.filters.yearStart && DATA.filters.yearEnd
+                ? `${DATA.filters.yearStart}-${DATA.filters.yearEnd}`
+                : DATA.filters.yearStart
+                ? `${DATA.filters.yearStart}+`
+                : `<=${DATA.filters.yearEnd}`;
+            activeFilters.push(`Year: ${yearRange}`);
+        }
 
         console.log(`%c🔍 FILTERS ACTIVE`, 'color: #0c5ed7; font-weight: bold; font-size: 12px;');
         console.log(`   ${activeFilters.join(' + ')}`);
@@ -1524,16 +1568,29 @@ function setMapView(view) {
 function clearAssaultFilters() {
     console.log('Clearing all filters');  // Debug
 
-    document.getElementById('filter-event-type').value = '';
-    document.getElementById('filter-event-group').value = '';
-    document.getElementById('filter-year').value = '';
+    // Reset dropdowns to first option (index 0)
+    const typeSelect = document.getElementById('filter-event-type');
+    const groupSelect = document.getElementById('filter-event-group');
+    const yearStartSelect = document.getElementById('filter-year-start');
+    const yearEndSelect = document.getElementById('filter-year-end');
 
+    typeSelect.selectedIndex = 0;
+    groupSelect.selectedIndex = 0;
+    yearStartSelect.selectedIndex = 0;
+    yearEndSelect.selectedIndex = 0;
+
+    // Clear filter data
     DATA.filters.eventType = '';
     DATA.filters.eventGroup = '';
-    DATA.filters.year = '';
+    DATA.filters.yearStart = '';
+    DATA.filters.yearEnd = '';
     DATA.filteredAssaults = [...DATA.assaults];
 
-    document.getElementById('filter-status').textContent = '';
+    // Clear status display if exists
+    const statusEl = document.getElementById('filter-status');
+    if (statusEl) {
+        statusEl.textContent = '';
+    }
 
     // Update metrics and map
     updateMetrics();
@@ -2177,11 +2234,19 @@ async function loadAllData() {
 
 loadAllData();
 
-// Add event listeners for filters - AUTO-APPLY ON CHANGE!
+// Create debounced version for year range filters (3 second delay)
+const debouncedApplyFilters = debounce(applyAssaultFilters, 3000);
+
+// Add event listeners for filters
 document.getElementById('clear-filters').addEventListener('click', clearAssaultFilters);
+
+// Immediate filters (Type and Category)
 document.getElementById('filter-event-type').addEventListener('change', applyAssaultFilters);
 document.getElementById('filter-event-group').addEventListener('change', applyAssaultFilters);
-document.getElementById('filter-year').addEventListener('change', applyAssaultFilters);
+
+// Debounced year range filters (updates 3 seconds after you stop changing)
+document.getElementById('filter-year-start').addEventListener('change', debouncedApplyFilters);
+document.getElementById('filter-year-end').addEventListener('change', debouncedApplyFilters);
 
 // Add event listeners for view toggles
 document.getElementById('view-stops').addEventListener('click', () => setMapView('stops'));

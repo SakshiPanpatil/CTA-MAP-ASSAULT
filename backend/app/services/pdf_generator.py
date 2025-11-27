@@ -24,7 +24,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from . import ai_insights, report_analytics
+from . import ai_insights, report_analytics, forecast_analytics
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -101,6 +101,13 @@ class ComprehensiveSafetyReport:
             leading=13, leftIndent=10, rightIndent=10, fontName="Helvetica-Oblique"
         ))
 
+        # Metric value style - clear, centered numbers/text
+        self.styles.add(ParagraphStyle(
+            name="CTAMetricValue", parent=self.styles["Normal"],
+            fontSize=13, textColor=colors.black, spaceAfter=0,
+            leading=15, alignment=1, fontName="Helvetica-Bold"
+        ))
+
         self._styles_initialized = True
 
     def _safe_text(self, text: str, max_len: int = 1500) -> str:
@@ -108,8 +115,26 @@ class ComprehensiveSafetyReport:
         if not text:
             return ""
         text = str(text).strip()
+
+        # If text exceeds limit, truncate smartly at sentence boundary
         if len(text) > max_len:
-            text = text[:max_len] + "..."
+            # Try to find last sentence end before max_len
+            truncated = text[:max_len]
+
+            # Look for sentence endings (., !, ?) within last 100 chars
+            for delimiter in ['. ', '.\n', '! ', '!\n', '? ', '?\n']:
+                last_sentence = truncated.rfind(delimiter)
+                if last_sentence > max_len - 200:  # Found a sentence end near the limit
+                    text = text[:last_sentence + 1]
+                    break
+            else:
+                # No sentence boundary found, try word boundary
+                last_space = truncated.rfind(' ')
+                if last_space > 0:
+                    text = text[:last_space] + "..."
+                else:
+                    text = truncated + "..."
+
         return ai_insights.markdown_to_html(text)
 
     def _p(self, text: str) -> Paragraph:
@@ -155,32 +180,36 @@ class ComprehensiveSafetyReport:
         story.append(PageBreak())
 
     def _add_metrics_grid(self, story: list, metrics: list[tuple[str, str, colors.Color]]):
-        """Add professional metrics grid."""
+        """Add professional metrics grid with wrapped values for long text."""
         rows = []
         current_row = []
         for i, (label, value, color) in enumerate(metrics):
-            data = [[label], [value]]
-            table = Table(data, colWidths=[2.1 * inch])
+            # Wrap long values (e.g., date ranges) so they don't overflow the cell
+            label_cell = Paragraph(f"<b>{label}</b>", self.styles["CTABodyText"])
+            value_text = str(value)
+            value_cell = Paragraph(value_text, self.styles["CTAMetricValue"])
+
+            data = [[label_cell], [value_cell]]
+            table = Table(data, colWidths=[2.3 * inch])
             table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, 0), color),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 1), (-1, -1), 16),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 12),
                 ("GRID", (0, 0), (-1, -1), 2, colors.white),
             ]))
             current_row.append(table)
             if len(current_row) == 3 or i == len(metrics) - 1:
                 while len(current_row) < 3:
-                    current_row.append(Spacer(2.1 * inch, 0))
+                    current_row.append(Spacer(2.3 * inch, 0))
                 rows.append(current_row)
                 current_row = []
 
-        grid_table = Table(rows, colWidths=[2.1 * inch] * 3, hAlign="LEFT")
+        grid_table = Table(rows, colWidths=[2.3 * inch] * 3, hAlign="LEFT", spaceBefore=6, spaceAfter=6)
         story.append(grid_table)
         story.append(Spacer(1, 0.2 * inch))
 
@@ -332,7 +361,7 @@ class ComprehensiveSafetyReport:
             ("Total Injuries", str(metrics["total_injuries"]), self.DANGER),
             ("Safety Score", f"{metrics['safety_score']}/100", risk_color),
             ("Risk Level", metrics["risk_level"], risk_color),
-            ("Date Range", date_range[:20], self.MUTED),
+            ("Date Range", date_range, self.MUTED),
             ("Analysis Radius", f"{radius_km} km", self.CTA_BLUE),
         ]
         self._add_metrics_grid(story, metrics_data)
@@ -357,7 +386,7 @@ class ComprehensiveSafetyReport:
             hour_counts = Counter(hours) if hours else {}
 
             event_types = [a.get("event_type") for a in nearby if a.get("event_type")]
-            type_counts = Counter(event_types) if event_types else {}
+            type_counts = Counter(event_types) if event_types else Counter()
 
             severities = [a.get("severity_score", 1) for a in nearby]
             sev_counts = Counter(severities) if severities else {}
@@ -389,7 +418,7 @@ class ComprehensiveSafetyReport:
             # Executive Summary (using unified insights)
             logger.info("   📝 Adding Executive Summary section...")
             story.append(Paragraph("Executive Summary", self.styles["CTASectionHeader"]))
-            story.append(Paragraph(self._safe_text(all_insights.get("executive_summary", ""), 800),
+            story.append(Paragraph(self._safe_text(all_insights.get("executive_summary", ""), 1500),
                                  self.styles["CTAHighlightBox"]))
             story.append(Spacer(1, 0.15 * inch))
 
@@ -432,16 +461,149 @@ class ComprehensiveSafetyReport:
                                  self.styles["CTAPlotSummary"]))
             story.append(Spacer(1, 0.1*inch))
 
+            # NEW: Predictive Analytics Section
+            logger.info("   🔮 Adding Predictive Analytics section...")
+            story.append(PageBreak())
+            story.append(Paragraph("Predictive Analytics & Future Trends", self.styles["CTASectionHeader"]))
+            story.append(Paragraph(
+                "Machine learning-based forecast using SARIMAX time series model. "
+                "Predictions based on historical patterns, seasonal trends, and statistical modeling.",
+                self.styles["CTABodyText"]
+            ))
+            story.append(Spacer(1, 0.1*inch))
+
+            # Prepare time series data for forecasting
+            monthly_series, ts_metadata = forecast_analytics.prepare_time_series_data(nearby)
+
+            if monthly_series is not None and len(monthly_series) >= 12:
+                # Train forecast model
+                forecast_result = forecast_analytics.train_sarimax_forecast(monthly_series, forecast_periods=6)
+
+                if forecast_result:
+                    # Seasonal Decomposition
+                    story.append(Paragraph("Seasonal Pattern Analysis", self.styles["CTASubsection"]))
+                    decomp_plot = forecast_analytics.create_seasonal_decomposition_plot(monthly_series, stop_name)
+                    if decomp_plot:
+                        story.append(Image(decomp_plot, width=6.2*inch, height=4.2*inch))
+                        story.append(Spacer(1, 0.03*inch))
+                        story.append(Paragraph(
+                            f"<i>Decomposition reveals underlying patterns: trend direction, seasonal cycles (peak: {ts_metadata.get('max_monthly', 0):.0f}/month, "
+                            f"low: {ts_metadata.get('min_monthly', 0):.0f}/month), and random variations. "
+                            f"Understanding these components improves forecast accuracy.</i>",
+                            self.styles["CTAPlotSummary"]
+                        ))
+                        story.append(Spacer(1, 0.15*inch))
+
+                    # 6-Month Forecast with Metrics
+                    story.append(Paragraph("6-Month Predictive Forecast", self.styles["CTASubsection"]))
+                    forecast_plot = forecast_analytics.create_enhanced_forecast_plot(
+                        forecast_result,
+                        title=stop_name,
+                        show_metrics=True
+                    )
+                    story.append(Image(forecast_plot, width=6.5*inch, height=3.2*inch))
+                    story.append(Spacer(1, 0.03*inch))
+
+                    # Forecast summary with metrics
+                    fcst_avg = forecast_result['forecast_values'].mean()
+                    hist_avg = ts_metadata['avg_monthly']
+                    change_pct = ((fcst_avg - hist_avg) / hist_avg) * 100
+                    change_color = "red" if change_pct > 10 else "green" if change_pct < -10 else "orange"
+
+                    story.append(Paragraph(
+                        f"<i><b>Model Performance:</b> MAE {forecast_result['mae']:.2f}, RMSE {forecast_result['rmse']:.2f}, MAPE {forecast_result['mape']:.1f}% | "
+                        f"<b>Forecast:</b> Expected {fcst_avg:.1f} incidents/month (next 6 months), "
+                        f"<font color='{change_color}'>{change_pct:+.1f}% change</font> from historical average ({hist_avg:.1f}/month).</i>",
+                        self.styles["CTAPlotSummary"]
+                    ))
+                    story.append(Spacer(1, 0.15*inch))
+
+                    # WHY Analysis - Most Important Part
+                    why_analysis = forecast_analytics.generate_why_analysis(forecast_result, monthly_series, stop_name)
+
+                    story.append(Paragraph("Understanding Current Trends - WHY NOW?", self.styles["CTASubsection"]))
+                    story.append(Paragraph(
+                        why_analysis['current_why'],
+                        self.styles["CTAHighlightBox"]
+                    ))
+                    story.append(Spacer(1, 0.1*inch))
+
+                    story.append(Paragraph("Future Trend Projection - WHY NEXT?", self.styles["CTASubsection"]))
+                    story.append(Paragraph(
+                        why_analysis['future_why'],
+                        self.styles["CTAHighlightBox"]
+                    ))
+                    story.append(Spacer(1, 0.15*inch))
+
+                    # Key Metrics Summary Box
+                    story.append(Paragraph("Forecast Summary & Risk Assessment", self.styles["CTASubsection"]))
+                    metrics_summary = [
+                        ["Metric", "Historical", "Forecast", "Change"],
+                        [
+                            "Monthly Average",
+                            f"{hist_avg:.1f}",
+                            f"{fcst_avg:.1f}",
+                            f"{change_pct:+.1f}%"
+                        ],
+                        [
+                            "Next Quarter Total",
+                            f"{hist_avg * 3:.0f}",
+                            f"{forecast_result['forecast_values'][:3].sum():.0f}",
+                            ""
+                        ],
+                        [
+                            "Peak Season",
+                            why_analysis['metrics']['peak_month'],
+                            why_analysis['metrics']['peak_month'],
+                            "Seasonal"
+                        ],
+                        [
+                            "Model Confidence",
+                            f"MAPE: {forecast_result['mape']:.1f}%",
+                            "80% CI shown",
+                            "High" if forecast_result['mape'] < 15 else "Moderate"
+                        ]
+                    ]
+
+                    metrics_table = Table(metrics_summary, colWidths=[2.2*inch, 1.5*inch, 1.5*inch, 1.3*inch])
+                    metrics_table.setStyle(TableStyle([
+                        ("BACKGROUND", (0, 0), (-1, 0), self.CTA_BLUE),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, self.LIGHT_BG]),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]))
+                    story.append(metrics_table)
+
+                else:
+                    story.append(Paragraph(
+                        f"<i>Model training failed. This can occur with irregular patterns or insufficient data quality. "
+                        f"Current: {ts_metadata.get('total_months', 0)} months. Consider collecting more consistent historical data.</i>",
+                        self.styles["CTAPlotSummary"]
+                    ))
+            else:
+                story.append(Paragraph(
+                    "<i>Predictive modeling unavailable: Requires minimum 12 months of historical data. "
+                    f"Current dataset: {ts_metadata.get('total_months', 0) if ts_metadata else 0} months. "
+                    "Continue collecting data to enable future trend analysis.</i>",
+                    self.styles["CTAPlotSummary"]
+                ))
+
             story.append(PageBreak())
 
             # AI Insights
             story.append(Paragraph("AI-Powered Insights", self.styles["CTASectionHeader"]))
-            story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 2000),
+            story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 3500),
                                  self.styles["CTABodyText"]))
 
             # Recommendations
             story.append(Paragraph("Recommendations", self.styles["CTASectionHeader"]))
-            story.append(Paragraph(self._safe_text(all_insights.get("recommendations", ""), 2500),
+            story.append(Paragraph(self._safe_text(all_insights.get("recommendations", ""), 4000),
                                  self.styles["CTABodyText"]))
 
             story.append(PageBreak())
@@ -511,7 +673,7 @@ class ComprehensiveSafetyReport:
             ("Operator Injuries", str(operator_inj), self.WARNING),
             ("Rider Injuries", str(rider_inj), self.WARNING),
             ("Average Severity", f"{avg_sev:.1f}/5", self.CTA_BLUE),
-            ("Date Range", date_range[:20], self.MUTED),
+            ("Date Range", date_range, self.MUTED),
         ]
         self._add_metrics_grid(story, metrics_data)
 
@@ -523,10 +685,10 @@ class ComprehensiveSafetyReport:
 
         hours = [report_analytics.parse_time(a.get("event_time")) for a in assaults]
         hours = [h for h in hours if h is not None]
-        hour_counts = Counter(hours) if hours else {}
+        hour_counts = Counter(hours) if hours else Counter()
 
         event_types = [a.get("event_type") for a in assaults if a.get("event_type")]
-        type_counts = Counter(event_types) if event_types else {}
+        type_counts = Counter(event_types) if event_types else Counter()
 
         severities = [a.get("severity_score", 1) for a in assaults]
         sev_counts = Counter(severities) if severities else {}
@@ -558,7 +720,7 @@ class ComprehensiveSafetyReport:
         # Executive Summary
         logger.info("   📝 Adding Executive Summary...")
         story.append(Paragraph("Executive Summary", self.styles["CTASectionHeader"]))
-        story.append(Paragraph(self._safe_text(all_insights.get("executive_summary", ""), 800),
+        story.append(Paragraph(self._safe_text(all_insights.get("executive_summary", ""), 1500),
                              self.styles["CTAHighlightBox"]))
         story.append(Spacer(1, 0.15*inch))
 
@@ -601,15 +763,149 @@ class ComprehensiveSafetyReport:
 
         story.append(PageBreak())
 
+        # NEW: Predictive Analytics Section for Cluster
+        logger.info("   🔮 Adding Predictive Analytics section to cluster report...")
+        story.append(Paragraph("Predictive Analytics & Future Trends", self.styles["CTASectionHeader"]))
+        story.append(Paragraph(
+            "Machine learning-based forecast using SARIMAX time series model (Best Performer: MAE 3.14, MAPE 11.6%). "
+            "Predictions based on historical patterns, seasonal trends, and statistical modeling.",
+            self.styles["CTABodyText"]
+        ))
+        story.append(Spacer(1, 0.1*inch))
+
+        # Prepare time series data for forecasting
+        monthly_series, ts_metadata = forecast_analytics.prepare_time_series_data(assaults)
+
+        if monthly_series is not None and len(monthly_series) >= 12:
+            # Train forecast model
+            forecast_result = forecast_analytics.train_sarimax_forecast(monthly_series, forecast_periods=6)
+
+            if forecast_result:
+                # Seasonal Decomposition
+                story.append(Paragraph("Seasonal Pattern Analysis", self.styles["CTASubsection"]))
+                decomp_plot = forecast_analytics.create_seasonal_decomposition_plot(monthly_series, "Assault Cluster")
+                if decomp_plot:
+                    story.append(Image(decomp_plot, width=6.2*inch, height=4.2*inch))
+                    story.append(Spacer(1, 0.03*inch))
+                    story.append(Paragraph(
+                        f"<i>Decomposition reveals underlying patterns: trend direction, seasonal cycles (peak: {ts_metadata.get('max_monthly', 0):.0f}/month, "
+                        f"low: {ts_metadata.get('min_monthly', 0):.0f}/month), and random variations. "
+                        f"Understanding these components improves forecast accuracy.</i>",
+                        self.styles["CTAPlotSummary"]
+                    ))
+                    story.append(Spacer(1, 0.15*inch))
+
+                # 6-Month Forecast with Metrics
+                story.append(Paragraph("6-Month Predictive Forecast", self.styles["CTASubsection"]))
+                forecast_plot = forecast_analytics.create_enhanced_forecast_plot(
+                    forecast_result,
+                    title="Assault Cluster Forecast",
+                    show_metrics=True
+                )
+                story.append(Image(forecast_plot, width=6.5*inch, height=3.2*inch))
+                story.append(Spacer(1, 0.03*inch))
+
+                # Forecast summary with metrics
+                fcst_avg = forecast_result['forecast_values'].mean()
+                hist_avg = ts_metadata['avg_monthly']
+                change_pct = ((fcst_avg - hist_avg) / hist_avg) * 100
+                change_color = "red" if change_pct > 10 else "green" if change_pct < -10 else "orange"
+
+                story.append(Paragraph(
+                    f"<i><b>Model Performance:</b> MAE {forecast_result['mae']:.2f}, RMSE {forecast_result['rmse']:.2f}, MAPE {forecast_result['mape']:.1f}% | "
+                    f"<b>Forecast:</b> Expected {fcst_avg:.1f} incidents/month (next 6 months), "
+                    f"<font color='{change_color}'>{change_pct:+.1f}% change</font> from historical average ({hist_avg:.1f}/month).</i>",
+                    self.styles["CTAPlotSummary"]
+                ))
+                story.append(Spacer(1, 0.15*inch))
+
+                # WHY Analysis - Most Important Part
+                why_analysis = forecast_analytics.generate_why_analysis(forecast_result, monthly_series, "Assault Cluster")
+
+                story.append(Paragraph("Understanding Current Trends - WHY NOW?", self.styles["CTASubsection"]))
+                story.append(Paragraph(
+                    why_analysis['current_why'],
+                    self.styles["CTAHighlightBox"]
+                ))
+                story.append(Spacer(1, 0.1*inch))
+
+                story.append(Paragraph("Future Trend Projection - WHY NEXT?", self.styles["CTASubsection"]))
+                story.append(Paragraph(
+                    why_analysis['future_why'],
+                    self.styles["CTAHighlightBox"]
+                ))
+                story.append(Spacer(1, 0.15*inch))
+
+                # Key Metrics Summary Box
+                story.append(Paragraph("Forecast Summary & Risk Assessment", self.styles["CTASubsection"]))
+                metrics_summary = [
+                    ["Metric", "Historical", "Forecast", "Change"],
+                    [
+                        "Monthly Average",
+                        f"{hist_avg:.1f}",
+                        f"{fcst_avg:.1f}",
+                        f"{change_pct:+.1f}%"
+                    ],
+                    [
+                        "Next Quarter Total",
+                        f"{hist_avg * 3:.0f}",
+                        f"{forecast_result['forecast_values'][:3].sum():.0f}",
+                        ""
+                    ],
+                    [
+                        "Peak Season",
+                        why_analysis['metrics']['peak_month'],
+                        why_analysis['metrics']['peak_month'],
+                        "Seasonal"
+                    ],
+                    [
+                        "Model Confidence",
+                        f"MAPE: {forecast_result['mape']:.1f}%",
+                        "80% CI shown",
+                        "High" if forecast_result['mape'] < 15 else "Moderate"
+                    ]
+                ]
+
+                metrics_table = Table(metrics_summary, colWidths=[2.2*inch, 1.5*inch, 1.5*inch, 1.3*inch])
+                metrics_table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), self.CTA_BLUE),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, self.LIGHT_BG]),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]))
+                story.append(metrics_table)
+
+            else:
+                story.append(Paragraph(
+                    f"<i>Model training failed. This can occur with irregular patterns or insufficient data quality. "
+                    f"Current: {ts_metadata.get('total_months', 0)} months. Consider collecting more consistent historical data.</i>",
+                    self.styles["CTAPlotSummary"]
+                ))
+        else:
+            story.append(Paragraph(
+                "<i>Predictive modeling unavailable: Requires minimum 12 months of historical data. "
+                f"Current dataset: {ts_metadata.get('total_months', 0) if ts_metadata else 0} months. "
+                "Continue collecting data to enable future trend analysis.</i>",
+                self.styles["CTAPlotSummary"]
+            ))
+
+        story.append(PageBreak())
+
         # AI Analysis
         story.append(Paragraph("AI-Powered Analysis", self.styles["CTASectionHeader"]))
-        story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 1500),
+        story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 3500),
                              self.styles["CTABodyText"]))
         story.append(Spacer(1, 0.15*inch))
 
         # Recommendations
         story.append(Paragraph("Recommendations", self.styles["CTASectionHeader"]))
-        story.append(Paragraph(self._safe_text(all_insights.get("recommendations", ""), 2000),
+        story.append(Paragraph(self._safe_text(all_insights.get("recommendations", ""), 4000),
                              self.styles["CTABodyText"]))
 
         story.append(PageBreak())
