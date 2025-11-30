@@ -20,17 +20,29 @@ matplotlib.use("Agg")
 plt.rcParams['figure.facecolor'] = 'white'
 plt.rcParams['axes.facecolor'] = '#f8f9fa'
 
-# Modern color palette
+# CTA MILITARY CODE SYSTEM - Risk Assessment Matrix Colors
+# Following official CTA color coding standards for consistency
 COLORS = {
-    "primary": "#0c5ed7",
-    "danger": "#b71c1c",
-    "warning": "#fb8c00",
-    "success": "#1f8b4c",
+    "primary": "#0c5ed7",      # CTA Blue
+    "danger": "#DC143C",        # Red (Unacceptable - Critical/Catastrophic)
+    "warning": "#FF8C00",       # Orange (Undesirable/Accept w/ Review)
+    "success": "#228B22",       # Green (Acceptable)
+    "yellow": "#FFD700",        # Yellow (Accept w/ Review)
     "accent": "#1990ff",
     "muted": "#5f6b7b",
 }
 
-SEVERITY_COLORS = ["#4caf50", "#66bb6a", "#fdd835", "#fb8c00", "#b71c1c"]
+# CTA Risk Matrix Severity Colors (Level 1-5)
+# Level 1-2 (Low): Green - Acceptable
+# Level 3 (Medium): Yellow - Accept w/ Review
+# Level 4-5 (High): Red - Unacceptable
+SEVERITY_COLORS = [
+    "#228B22",  # Level 1: Green (Acceptable)
+    "#9ACD32",  # Level 2: Yellow-Green (Acceptable)
+    "#FFD700",  # Level 3: Yellow (Accept w/ Review)
+    "#FF8C00",  # Level 4: Orange (Undesirable)
+    "#DC143C"   # Level 5: Red (Unacceptable/Critical)
+]
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTA Assault Visualization Builder</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Plotly.js for charts -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- Bootstrap Icons for professional icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --cta-blue: #0066B3;
+            --cta-blue-dark: #004A8F;
+            --cta-red: #C8102E;
+            --bg-light: #f8f9fa;
+            --border: #dee2e6;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 320px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-blue-dark));
+            color: white;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .btn-light {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn-light:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .btn-danger {
+            background: var(--cta-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #a00d24;
+        }
+
+        /* Left Panel - Fields */
+        .fields-panel {
+            background: white;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .field-item {
+            background: var(--bg-light);
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field-item:hover {
+            background: #e9ecef;
+            border-color: var(--cta-blue);
+            transform: translateX(2px);
+        }
+
+        .field-item:active {
+            cursor: grabbing;
+        }
+
+        .field-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .field-icon.dimension {
+            background: var(--cta-blue);
+        }
+
+        .field-icon.measure {
+            background: var(--cta-red);
+        }
+
+        /* Center Panel - Canvas */
+        .canvas-panel {
+            background: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .drop-zones {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+            background: #f1f3f5;
+        }
+
+        .drop-zone {
+            background: white;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .drop-zone.drag-over {
+            background: #e7f5ff;
+            border-color: var(--cta-blue);
+            border-style: solid;
+        }
+
+        .drop-zone.filled {
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-blue-dark));
+            border-style: solid;
+            border-color: var(--cta-blue-dark);
+        }
+
+        .drop-zone-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .drop-zone.filled .drop-zone-label {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .drop-zone-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            display: none;
+        }
+
+        .drop-zone.filled .drop-zone-value {
+            display: block;
+        }
+
+        .drop-zone-placeholder {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .drop-zone.filled .drop-zone-placeholder {
+            display: none;
+        }
+
+        .remove-field {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .drop-zone.filled .remove-field {
+            display: flex;
+        }
+
+        .remove-field:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .chart-container {
+            flex: 1;
+            padding: 16px;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #chart {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 0.875rem;
+        }
+
+        /* Right Panel - Controls */
+        .controls-panel {
+            background: white;
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--cta-blue);
+            box-shadow: 0 0 0 3px rgba(0, 102, 179, 0.1);
+        }
+
+        .filter-item {
+            margin-bottom: 16px;
+        }
+
+        .filter-item label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+
+        .multiselect {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .multiselect label {
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.8rem;
+        }
+
+        .multiselect label:hover {
+            background: var(--bg-light);
+        }
+
+        .multiselect input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .btn-primary {
+            background: var(--cta-blue);
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: var(--cta-blue-dark);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat-card {
+            background: var(--bg-light);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--cta-blue);
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--bg-light);
+            border-top-color: var(--cta-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p style="margin-top: 16px; color: var(--text-muted);">Loading assault data...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>Assault Visualization Builder</span>
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-light" onclick="saveCurrentPlot()">
+                    <i class="bi bi-bookmark-plus" style="margin-right: 4px;"></i>
+                    <span>Save Plot</span>
+                </button>
+                <button class="btn btn-light" onclick="downloadChart()">
+                    <i class="bi bi-download" style="margin-right: 4px;"></i>
+                    <span>Download PNG</span>
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    <i class="bi bi-x-circle" style="margin-right: 4px;"></i>
+                    <span>Clear All</span>
+                </button>
+                <button class="btn btn-light" onclick="window.location.href='/cards'">
+                    <i class="bi bi-arrow-left" style="margin-right: 4px;"></i>
+                    <span>Back</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Left Panel: Fields -->
+        <div class="fields-panel">
+            <div class="panel-title">
+                <i class="bi bi-stack" style="margin-right: 6px;"></i>
+                <span>Dimensions</span>
+            </div>
+            <div id="dimensions"></div>
+
+            <div class="panel-title" style="margin-top: 24px;">
+                <i class="bi bi-graph-up" style="margin-right: 6px;"></i>
+                <span>Measures</span>
+            </div>
+            <div id="measures"></div>
+        </div>
+
+        <!-- Center Panel: Canvas -->
+        <div class="canvas-panel">
+            <div class="drop-zones">
+                <div class="drop-zone" id="x-axis-zone" data-zone="xAxis">
+                    <span class="drop-zone-label">X-Axis (Category)</span>
+                    <span class="drop-zone-placeholder">Drop dimension here</span>
+                    <span class="drop-zone-value" id="x-axis-value"></span>
+                    <button class="remove-field" onclick="removeField('xAxis')">×</button>
+                </div>
+
+                <div class="drop-zone" id="y-axis-zone" data-zone="yAxis">
+                    <span class="drop-zone-label">Y-Axis (Value)</span>
+                    <span class="drop-zone-placeholder">Drop measure here</span>
+                    <span class="drop-zone-value" id="y-axis-value"></span>
+                    <button class="remove-field" onclick="removeField('yAxis')">×</button>
+                </div>
+
+                <div class="drop-zone" id="color-zone" data-zone="color">
+                    <span class="drop-zone-label">Group By (Optional)</span>
+                    <span class="drop-zone-placeholder">Drop dimension to group</span>
+                    <span class="drop-zone-value" id="color-value"></span>
+                    <button class="remove-field" onclick="removeField('color')">×</button>
+                </div>
+            </div>
+
+            <div style="padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-dark); flex-shrink: 0;">Aggregation:</label>
+                    <select id="aggregationFunction" onchange="updateChart()" style="flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem;">
+                        <option value="count">Count</option>
+                        <option value="sum">Sum</option>
+                        <option value="avg">Average</option>
+                        <option value="min">Minimum</option>
+                        <option value="max">Maximum</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div id="chart">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <h3>Start Building Your Visualization</h3>
+                        <p>Drag fields from the left panel and drop them onto the X-Axis and Y-Axis zones</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Controls -->
+        <div class="controls-panel">
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-bar-chart" style="margin-right: 4px;"></i>
+                    <span>Chart Type</span>
+                </label>
+                <select id="chartType" onchange="updateChart()">
+                    <option value="bar">Bar Chart</option>
+                    <option value="line">Line Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="box">Box Plot</option>
+                    <option value="area">Area Chart</option>
+                    <option value="funnel">Funnel Chart</option>
+                    <option value="sunburst">Sunburst</option>
+                    <option value="treemap">Treemap</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-funnel" style="margin-right: 4px;"></i>
+                    <span>Filters</span>
+                </label>
+
+                <div class="filter-item">
+                    <label>Year Range</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="number" id="yearStart" placeholder="2016" min="2016" max="2025" onchange="applyFilters()">
+                        <input type="number" id="yearEnd" placeholder="2025" min="2016" max="2025" onchange="applyFilters()">
+                    </div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Event Type</label>
+                    <div class="multiselect" id="eventTypeFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Event Category</label>
+                    <div class="multiselect" id="eventCategoryFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Location Type</label>
+                    <div class="multiselect" id="locationTypeFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Weather</label>
+                    <div class="multiselect" id="weatherFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Lighting</label>
+                    <div class="multiselect" id="lightingFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Transit Worker Type</label>
+                    <div class="multiselect" id="workerTypeFilter"></div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Intentional</label>
+                    <div class="multiselect" id="intentionalFilter"></div>
+                </div>
+
+                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-speedometer2" style="margin-right: 4px;"></i>
+                    <span>Statistics</span>
+                </label>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Records</div>
+                        <div class="stat-value" id="totalRecords">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Filtered</div>
+                        <div class="stat-value" id="filteredRecords">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let rawData = [];
+        let filteredData = [];
+        let dropZones = {
+            xAxis: null,
+            yAxis: null,
+            color: null
+        };
+
+        // Field definitions - ALL important fields from CSV
+        const dimensions = [
+            // Basic Info
+            { name: 'Year', field: 'Year' },
+            { name: 'Mode Name', field: 'Mode Name' },
+
+            // Event Classification
+            { name: 'Event Type', field: 'Event Type' },
+            { name: 'Event Type Group', field: 'Event Type Group' },
+            { name: 'Event Category', field: 'Event Category' },
+            { name: 'Safety/Security', field: 'Safety/Security' },
+
+            // Location & Environment
+            { name: 'Location Type', field: 'Location Type' },
+            { name: 'Weather', field: 'Weather' },
+            { name: 'Lighting', field: 'Lighting' },
+            { name: 'Current Condition', field: 'Current Condition' },
+            { name: 'Road Configuration', field: 'Road Configuration' },
+            { name: 'Intersection Control Device', field: 'Intersection Control Device' },
+
+            // People Involved
+            { name: 'Transit Worker Type', field: 'Transit Worker Type' },
+            { name: 'Transit Worker Assault Detail Type', field: 'Transit Worker Assault Detail Type' },
+            { name: 'Transit Worker Assault Flag', field: 'Transit Worker Assault Flag' },
+
+            // Vehicle Info
+            { name: 'Transit Vehicle Type', field: 'Transit Vehicle Type' },
+            { name: 'Transit Vehicle Manufacturer', field: 'Transit Vehicle Manufacturer' },
+            { name: 'Transit Vehicle Action', field: 'Transit Vehicle Action' },
+            { name: 'Operator Location', field: 'Operator Location' },
+
+            // Intent & Collision
+            { name: 'Intentional (Y/N)', field: 'Intentional (Y/N)' },
+            { name: 'Collision With', field: 'Collision With' },
+            { name: 'Property Damage', field: 'Property Damage' },
+
+            // Derived Time Fields
+            { name: 'Month', field: 'Month', derived: true },
+            { name: 'Hour', field: 'HourDisplay', derived: true },
+            { name: 'Day of Week', field: 'DayOfWeek', derived: true },
+            { name: 'Quarter', field: 'Quarter', derived: true }
+        ];
+
+        const measures = [
+            // Count (special case - always count)
+            { name: 'Count of Records', field: 'count', isCount: true },
+
+            // Total Casualties
+            { name: 'Total Injuries', field: 'Total Injuries' },
+            { name: 'Total Fatalities', field: 'Total Fatalities' },
+            { name: 'Total Serious Injuries', field: 'Total Serious Injuries' },
+
+            // Rider Casualties
+            { name: 'Transit Vehicle Rider Injuries', field: 'Transit Vehicle Rider Injuries' },
+            { name: 'Transit Vehicle Rider Fatalities', field: 'Transit Vehicle Rider Fatalities' },
+            { name: 'Transit Vehicle Rider Serious Injuries', field: 'Transit Vehicle Rider Serious Injuries' },
+
+            // Operator Casualties
+            { name: 'Transit Vehicle Operator Injuries', field: 'Transit Vehicle Operator Injuries' },
+            { name: 'Transit Vehicle Operator Fatalities', field: 'Transit Vehicle Operator Fatalities' },
+            { name: 'Transit Vehicle Operator Serious Injuries', field: 'Transit Vehicle Operator Serious Injuries' },
+
+            // Other Workers
+            { name: 'Non-Operator Transit Employee Injuries', field: 'Non-Operator Transit Employee Injuries' },
+            { name: 'Non-Operator Transit Employee Fatalities', field: 'Non-Operator Transit Employee Fatalities' },
+            { name: 'Other Worker Injuries', field: 'Other Worker Injuries' },
+            { name: 'Other Worker Fatalities', field: 'Other Worker Fatalities' },
+
+            // Pedestrians - ALL types
+            { name: 'Pedestrian in Crosswalk Injuries', field: 'Pedestrian in Crosswalk Injuries' },
+            { name: 'Pedestrian in Crosswalk Serious Injuries', field: 'Pedestrian in Crosswalk Serious Injuries' },
+            { name: 'Pedestrian in Crosswalk Fatalities', field: 'Pedestrian in Crosswalk Fatalities' },
+            { name: 'Pedestrian Not in Crosswalk Injuries', field: 'Pedestrian Not in Crosswalk Injuries' },
+            { name: 'Pedestrian Not in Crosswalk Serious Injuries', field: 'Pedestrian Not in Crosswalk Serious Injuries' },
+            { name: 'Pedestrian Not in Crosswalk Fatalities', field: 'Pedestrian Not in Crosswalk Fatalities' },
+            { name: 'Pedestrian Crossing Tracks Injuries', field: 'Pedestrian Crossing Tracks Injuries' },
+            { name: 'Pedestrian Crossing Tracks Serious Injuries', field: 'Pedestrian Crossing Tracks Serious Injuries' },
+            { name: 'Pedestrian Crossing Tracks Fatalities', field: 'Pedestrian Crossing Tracks Fatalities' },
+            { name: 'Pedestrian Walking Along Tracks Injuries', field: 'Pedestrian Walking Along Tracks Injuries' },
+            { name: 'Pedestrian Walking Along Tracks Serious Injuries', field: 'Pedestrian Walking Along Tracks Serious Injuries' },
+            { name: 'Pedestrian Walking Along Tracks Fatalities', field: 'Pedestrian Walking Along Tracks Fatalities' },
+
+            // Bicyclists
+            { name: 'Bicyclist Injuries', field: 'Bicyclist Injuries' },
+            { name: 'Bicyclist Serious Injuries', field: 'Bicyclist Serious Injuries' },
+            { name: 'Bicyclist Fatalities', field: 'Bicyclist Fatalities' },
+
+            // People Waiting
+            { name: 'People Waiting or Leaving Injuries', field: 'People Waiting or Leaving Injuries' },
+            { name: 'People Waiting or Leaving Serious Injuries', field: 'People Waiting or Leaving Serious Injuries' },
+            { name: 'People Waiting or Leaving Fatalities', field: 'People Waiting or Leaving Fatalities' },
+
+            // Occupants of Other Vehicles
+            { name: 'Occupant of Other Vehicle Injuries', field: 'Occupant of Other Vehicle Injuries' },
+            { name: 'Occupant of Other Vehicle Serious Injuries', field: 'Occupant of Other Vehicle Serious Injuries' },
+            { name: 'Occupant of Other Vehicle Fatalities', field: 'Occupant of Other Vehicle Fatalities' },
+
+            // Other & Suicide
+            { name: 'Other Injuries', field: 'Other Injuries' },
+            { name: 'Other Serious Injuries', field: 'Other Serious Injuries' },
+            { name: 'Other Fatalities', field: 'Other Fatalities' },
+            { name: 'Suicide Injuries', field: 'Suicide Injuries' },
+            { name: 'Suicide Serious Injuries', field: 'Suicide Serious Injuries' },
+            { name: 'Suicide Fatalities', field: 'Suicide Fatalities' },
+
+            // Trespassers
+            { name: 'Trespasser Injuries (Subtotal)', field: 'Trespasser Inuries (Subtotal)' },
+            { name: 'Trespasser Serious Injuries (Subtotal)', field: 'Trespasser Serious Injuries (Subtotal)' },
+            { name: 'Trespasser Fatalities (Subtotal)', field: 'Trespasser Fatalities (Subtotal)' },
+
+            // Vehicle Counts
+            { name: 'Number of Transit Vehicles Involved', field: 'Number of Transit Vehicles Involved' },
+            { name: 'Number of Non-Transit Vehicles Involved', field: 'Number of Non-Transit Vehicles Involved' },
+            { name: 'Number of Cars on Involved Transit Vehicles', field: 'Number of Cars on Involved Transit Vehicles' },
+
+            // Numeric Fields (can use any aggregation)
+            { name: 'Vehicle Speed', field: 'Vehicle Speed' }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderFields();
+            setupDragAndDrop();
+        });
+
+        // Load CSV data
+        function loadData() {
+            // Fetch CSV through backend endpoint to avoid path issues
+            Papa.parse('/assaults.csv', {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    rawData = results.data.filter(row => row.Year); // Remove empty rows
+
+                    // Add derived fields
+                    rawData.forEach(row => {
+                        if (row['Event Date']) {
+                            const date = new Date(row['Event Date']);
+                            row['Month'] = date.toLocaleString('default', { month: 'long' });
+                            row['DayOfWeek'] = date.toLocaleString('default', { weekday: 'long' });
+                            const quarter = Math.floor(date.getMonth() / 3) + 1;
+                            row['Quarter'] = `Q${quarter}`;
+                        }
+                        if (row['Event Time']) {
+                            // Parse time with AM/PM support
+                            const timeStr = row['Event Time'].toLowerCase();
+                            const parts = timeStr.split(':');
+                            let hour = parseInt(parts[0]);
+
+                            // Check for AM/PM
+                            const isPM = timeStr.includes('pm');
+                            const isAM = timeStr.includes('am');
+
+                            // Convert to 24-hour format
+                            if (isPM && hour !== 12) {
+                                hour += 12;
+                            } else if (isAM && hour === 12) {
+                                hour = 0;
+                            }
+
+                            row['Hour'] = hour;
+
+                            // Create display format for labels (e.g., "2 PM", "11 AM", "12 AM")
+                            let displayHour = hour;
+                            let period = 'AM';
+
+                            if (hour === 0) {
+                                displayHour = 12;
+                                period = 'AM';
+                            } else if (hour === 12) {
+                                displayHour = 12;
+                                period = 'PM';
+                            } else if (hour > 12) {
+                                displayHour = hour - 12;
+                                period = 'PM';
+                            }
+
+                            row['HourDisplay'] = `${displayHour} ${period}`;
+                        }
+                    });
+
+                    filteredData = [...rawData];
+                    updateStats();
+                    populateFilters();
+                    document.getElementById('loading').style.display = 'none';
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                    alert('Failed to load data. Please check the CSV file path.');
+                    document.getElementById('loading').style.display = 'none';
+                }
+            });
+        }
+
+        // Render field items
+        function renderFields() {
+            const dimContainer = document.getElementById('dimensions');
+            const measContainer = document.getElementById('measures');
+
+            dimensions.forEach(dim => {
+                const div = document.createElement('div');
+                div.className = 'field-item';
+                div.draggable = true;
+                div.dataset.field = dim.field;
+                div.dataset.type = 'dimension';
+                div.innerHTML = `<span class="field-icon dimension"></span>${dim.name}`;
+                dimContainer.appendChild(div);
+            });
+
+            measures.forEach(meas => {
+                const div = document.createElement('div');
+                div.className = 'field-item';
+                div.draggable = true;
+                div.dataset.field = meas.field;
+                div.dataset.isCount = meas.isCount || false;
+                div.dataset.type = 'measure';
+                div.innerHTML = `<span class="field-icon measure"></span>${meas.name}`;
+                measContainer.appendChild(div);
+            });
+        }
+
+        // Setup drag and drop
+        function setupDragAndDrop() {
+            const fieldItems = document.querySelectorAll('.field-item');
+            const zones = document.querySelectorAll('.drop-zone');
+
+            fieldItems.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('field', item.dataset.field);
+                    e.dataTransfer.setData('type', item.dataset.type);
+                    e.dataTransfer.setData('isCount', item.dataset.isCount || 'false');
+                    e.dataTransfer.setData('name', item.textContent.trim());
+                });
+            });
+
+            zones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+
+                    const field = e.dataTransfer.getData('field');
+                    const type = e.dataTransfer.getData('type');
+                    const isCount = e.dataTransfer.getData('isCount') === 'true';
+                    const name = e.dataTransfer.getData('name');
+                    const zoneName = zone.dataset.zone;
+
+                    dropZones[zoneName] = { field, type, isCount, name };
+
+                    zone.classList.add('filled');
+                    zone.querySelector('.drop-zone-value').textContent = name;
+
+                    // Set default aggregation when Y-axis is filled with a measure
+                    if (zoneName === 'yAxis' && type === 'measure') {
+                        document.getElementById('aggregationFunction').value = isCount ? 'count' : 'sum';
+                    }
+
+                    updateChart();
+                });
+            });
+        }
+
+        // Remove field from drop zone
+        function removeField(zoneName) {
+            dropZones[zoneName] = null;
+            const zone = document.querySelector(`[data-zone="${zoneName}"]`);
+            zone.classList.remove('filled');
+            zone.querySelector('.drop-zone-value').textContent = '';
+            updateChart();
+        }
+
+        // Clear all
+        function clearAll() {
+            if (confirm('Clear all fields and filters?')) {
+                Object.keys(dropZones).forEach(key => dropZones[key] = null);
+                document.querySelectorAll('.drop-zone').forEach(z => {
+                    z.classList.remove('filled');
+                    z.querySelector('.drop-zone-value').textContent = '';
+                });
+                document.getElementById('chartType').value = 'bar';
+                document.getElementById('yearStart').value = '';
+                document.getElementById('yearEnd').value = '';
+                filteredData = [...rawData];
+                updateStats();
+                updateChart();
+            }
+        }
+
+        // Populate filter options
+        function populateFilters() {
+            const eventTypes = [...new Set(rawData.map(r => r['Event Type']).filter(Boolean))].sort();
+            const eventCategories = [...new Set(rawData.map(r => r['Event Category']).filter(Boolean))].sort();
+            const locationTypes = [...new Set(rawData.map(r => r['Location Type']).filter(Boolean))].sort();
+            const weatherTypes = [...new Set(rawData.map(r => r['Weather']).filter(Boolean))].sort();
+            const lightingTypes = [...new Set(rawData.map(r => r['Lighting']).filter(Boolean))].sort();
+            const workerTypes = [...new Set(rawData.map(r => r['Transit Worker Type']).filter(Boolean))].sort();
+            const intentionalTypes = [...new Set(rawData.map(r => r['Intentional (Y/N)']).filter(Boolean))].sort();
+
+            const eventFilter = document.getElementById('eventTypeFilter');
+            const eventCategoryFilter = document.getElementById('eventCategoryFilter');
+            const locationFilter = document.getElementById('locationTypeFilter');
+            const weatherFilter = document.getElementById('weatherFilter');
+            const lightingFilter = document.getElementById('lightingFilter');
+            const workerFilter = document.getElementById('workerTypeFilter');
+            const intentionalFilter = document.getElementById('intentionalFilter');
+
+            eventTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                eventFilter.appendChild(label);
+            });
+
+            eventCategories.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                eventCategoryFilter.appendChild(label);
+            });
+
+            locationTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                locationFilter.appendChild(label);
+            });
+
+            weatherTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                weatherFilter.appendChild(label);
+            });
+
+            lightingTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                lightingFilter.appendChild(label);
+            });
+
+            workerTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                workerFilter.appendChild(label);
+            });
+
+            intentionalTypes.forEach(type => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${type}" onchange="applyFilters()"> ${type}`;
+                intentionalFilter.appendChild(label);
+            });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            filteredData = rawData.filter(row => {
+                // Year filter
+                const yearStart = document.getElementById('yearStart').value;
+                const yearEnd = document.getElementById('yearEnd').value;
+                if (yearStart && parseInt(row.Year) < parseInt(yearStart)) return false;
+                if (yearEnd && parseInt(row.Year) > parseInt(yearEnd)) return false;
+
+                // Event type filter
+                const eventTypes = Array.from(document.querySelectorAll('#eventTypeFilter input:checked')).map(cb => cb.value);
+                if (eventTypes.length > 0 && !eventTypes.includes(row['Event Type'])) return false;
+
+                // Event category filter
+                const eventCategories = Array.from(document.querySelectorAll('#eventCategoryFilter input:checked')).map(cb => cb.value);
+                if (eventCategories.length > 0 && !eventCategories.includes(row['Event Category'])) return false;
+
+                // Location type filter
+                const locationTypes = Array.from(document.querySelectorAll('#locationTypeFilter input:checked')).map(cb => cb.value);
+                if (locationTypes.length > 0 && !locationTypes.includes(row['Location Type'])) return false;
+
+                // Weather filter
+                const weatherTypes = Array.from(document.querySelectorAll('#weatherFilter input:checked')).map(cb => cb.value);
+                if (weatherTypes.length > 0 && !weatherTypes.includes(row['Weather'])) return false;
+
+                // Lighting filter
+                const lightingTypes = Array.from(document.querySelectorAll('#lightingFilter input:checked')).map(cb => cb.value);
+                if (lightingTypes.length > 0 && !lightingTypes.includes(row['Lighting'])) return false;
+
+                // Worker type filter
+                const workerTypes = Array.from(document.querySelectorAll('#workerTypeFilter input:checked')).map(cb => cb.value);
+                if (workerTypes.length > 0 && !workerTypes.includes(row['Transit Worker Type'])) return false;
+
+                // Intentional filter
+                const intentionalTypes = Array.from(document.querySelectorAll('#intentionalFilter input:checked')).map(cb => cb.value);
+                if (intentionalTypes.length > 0 && !intentionalTypes.includes(row['Intentional (Y/N)'])) return false;
+
+                return true;
+            });
+
+            updateStats();
+            updateChart();
+        }
+
+        // Professional analyst color palettes (matching viz_templates)
+        const COLOR_PALETTES = {
+            main: ['#0066B3', '#C8102E', '#FFC857', '#2FBF71', '#7A76FF', '#FF6F61', '#00AFC1', '#E07A5F', '#3D5A80', '#6C5B7B'],
+            categorical: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'],
+            sequential: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
+            diverging: ['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4'],
+            vibrant: ['#E63946', '#F77F00', '#FCBF49', '#06D6A0', '#118AB2', '#073B4C', '#EF476F', '#FFD166', '#06FFA5', '#8338EC']
+        };
+
+        const COLOR_PALETTE = COLOR_PALETTES.vibrant;
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalRecords').textContent = rawData.length.toLocaleString();
+            document.getElementById('filteredRecords').textContent = filteredData.length.toLocaleString();
+        }
+
+        // Update chart
+        function updateChart() {
+            const chartDiv = document.getElementById('chart');
+
+            if (!dropZones.xAxis || !dropZones.yAxis) {
+                // Only show empty state if there are no axes set
+                // Purge any existing Plotly chart first
+                try {
+                    Plotly.purge(chartDiv);
+                } catch (e) {
+                    // Ignore errors if no chart exists
+                }
+                chartDiv.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <h3>Start Building Your Visualization</h3>
+                        <p>Drag fields from the left panel and drop them onto the X-Axis and Y-Axis zones</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const chartType = document.getElementById('chartType').value;
+                const xField = dropZones.xAxis.field;
+                const yField = dropZones.yAxis.field;
+                const colorField = dropZones.color?.field;
+
+                // Get aggregation from selector (or default to count for count measures)
+                let yAggregation = document.getElementById('aggregationFunction').value;
+                if (dropZones.yAxis.isCount) {
+                    yAggregation = 'count';  // Force count for "Count of Records"
+                }
+
+                console.log('Updating chart with:', {
+                    chartType,
+                    xField,
+                    yField,
+                    colorField,
+                    yAggregation,
+                    dataLength: filteredData.length
+                });
+
+                // Aggregate data
+                const aggregated = aggregateData(filteredData, xField, yField, yAggregation, colorField);
+                console.log('Aggregated data:', aggregated.length, 'points');
+
+                if (aggregated.length === 0) {
+                    console.warn('No data after aggregation!');
+                    // Purge any existing Plotly chart first
+                    Plotly.purge(chartDiv);
+                    chartDiv.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h3>No Data Available</h3>
+                            <p>Try adjusting your filters or selecting different fields</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Generate chart based on type (Plotly.react will handle clearing/updating)
+                generateChart(chartType, aggregated, xField, yField, colorField);
+
+            } catch (error) {
+                console.error('Error updating chart:', error);
+                // Purge any existing Plotly chart first
+                try {
+                    Plotly.purge(chartDiv);
+                } catch (e) {
+                    // Ignore purge errors
+                }
+                chartDiv.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3>Error Rendering Chart</h3>
+                        <p>${error.message}</p>
+                        <p style="font-size: 0.75rem; margin-top: 8px;">Check browser console for details</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Aggregate data
+        function aggregateData(data, xField, yField, aggregation, colorField) {
+            const grouped = {};
+
+            data.forEach(row => {
+                const xKey = row[xField] || 'Unknown';
+                const colorKey = colorField ? (row[colorField] || 'Unknown') : 'All';
+                const key = `${xKey}|||${colorKey}`;
+
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        x: xKey,
+                        color: colorKey,
+                        values: []
+                    };
+                }
+
+                if (aggregation === 'count') {
+                    grouped[key].values.push(1);
+                } else {
+                    const val = parseFloat(row[yField]) || 0;
+                    grouped[key].values.push(val);
+                }
+            });
+
+            // Calculate aggregation
+            Object.keys(grouped).forEach(key => {
+                const values = grouped[key].values;
+                if (aggregation === 'count' || aggregation === 'sum') {
+                    grouped[key].y = values.reduce((a, b) => a + b, 0);
+                } else if (aggregation === 'avg') {
+                    grouped[key].y = values.reduce((a, b) => a + b, 0) / values.length;
+                } else if (aggregation === 'min') {
+                    grouped[key].y = Math.min(...values);
+                } else if (aggregation === 'max') {
+                    grouped[key].y = Math.max(...values);
+                }
+            });
+
+            return Object.values(grouped);
+        }
+
+        // Generate chart
+        function generateChart(type, data, xField, yField, colorField) {
+            console.log('Generating chart:', { type, dataPoints: data.length, colorField });
+
+            // Get the chart element
+            const chartElement = document.getElementById('chart');
+            if (!chartElement) {
+                console.error('Chart element not found!');
+                return;
+            }
+
+            // If there's an empty state, clear it first
+            const emptyState = chartElement.querySelector('.empty-state');
+            if (emptyState) {
+                console.log('Clearing empty state');
+                chartElement.innerHTML = '';
+            }
+
+            const layout = {
+                title: {
+                    text: `${dropZones.yAxis.name} by ${dropZones.xAxis.name}`,
+                    font: { size: 18, family: 'Inter, sans-serif', color: '#1a202c' }
+                },
+                xaxis: {
+                    title: dropZones.xAxis.name,
+                    gridcolor: '#e2e8f0',
+                    showgrid: true
+                },
+                yaxis: {
+                    title: dropZones.yAxis.name,
+                    gridcolor: '#e2e8f0',
+                    showgrid: true
+                },
+                showlegend: Boolean(colorField),
+                height: Math.max(400, document.getElementById('chart').offsetHeight - 50),
+                margin: { t: 60, r: 30, b: 80, l: 70 },
+                plot_bgcolor: '#f8fafc',
+                paper_bgcolor: '#ffffff',
+                hovermode: 'closest'
+            };
+
+            let traces = [];
+
+            // Box plot: use raw filteredData so we keep full distributions
+            if (type === 'box') {
+                const groups = {};
+                filteredData.forEach(row => {
+                    const xVal = row[xField] || 'Unknown';
+                    const colorVal = colorField ? (row[colorField] || 'Unknown') : null;
+                    const key = colorVal ? `${xVal}|||${colorVal}` : xVal;
+                    if (!groups[key]) {
+                        groups[key] = { x: xVal, color: colorVal, values: [] };
+                    }
+                    const val = parseFloat(row[yField]);
+                    if (!Number.isNaN(val)) {
+                        groups[key].values.push(val);
+                    }
+                });
+
+                const groupArray = Object.values(groups).filter(g => g.values.length > 0);
+                if (colorField) {
+                    const colors = [...new Set(groupArray.map(g => g.color))];
+                    colors.forEach((color, idx) => {
+                        const subset = groupArray.filter(g => g.color === color);
+                        traces.push({
+                            type: 'box',
+                            name: color,
+                            x: subset.map(g => g.x),
+                            y: subset.flatMap(g => g.values),
+                            marker: { color: COLOR_PALETTE[idx % COLOR_PALETTE.length] },
+                            boxmean: 'sd'
+                        });
+                    });
+                } else {
+                    groupArray.forEach((g, idx) => {
+                        traces.push({
+                            type: 'box',
+                            name: String(g.x),
+                            y: g.values,
+                            marker: { color: COLOR_PALETTE[idx % COLOR_PALETTE.length] },
+                            boxmean: 'sd'
+                        });
+                    });
+                }
+            }
+            else if (type === 'pie') {
+                traces = [{
+                    labels: data.map(d => d.x),
+                    values: data.map(d => d.y),
+                    type: 'pie',
+                    marker: {
+                        colors: COLOR_PALETTE,
+                        line: { color: 'white', width: 2 }
+                    },
+                    textposition: 'auto',
+                    textinfo: 'label+percent',
+                    hovertemplate: '<b>%{label}</b><br>Value: %{value}<br>Percent: %{percent}<extra></extra>',
+                    hole: 0.3
+                }];
+                delete layout.xaxis;
+                delete layout.yaxis;
+            }
+            else if (type === 'sunburst') {
+                const labels = ['Total', ...data.map(d => d.x)];
+                const parents = ['', ...data.map(() => 'Total')];
+                const values = [data.reduce((sum, d) => sum + d.y, 0), ...data.map(d => d.y)];
+
+                traces = [{
+                    labels: labels,
+                    parents: parents,
+                    values: values,
+                    type: 'sunburst',
+                    marker: {
+                        colors: ['rgba(255,255,255,0)', ...COLOR_PALETTE.slice(0, data.length)],
+                        line: { color: 'white', width: 2 }
+                    },
+                    branchvalues: 'total',
+                    textinfo: 'label+percent parent',
+                    hovertemplate: '<b>%{label}</b><br>Value: %{value}<br>Percent: %{percentParent}<extra></extra>'
+                }];
+                delete layout.xaxis;
+                delete layout.yaxis;
+            }
+            else if (type === 'treemap') {
+                const labels = ['Total', ...data.map(d => d.x)];
+                const parents = ['', ...data.map(() => 'Total')];
+                const values = [data.reduce((sum, d) => sum + d.y, 0), ...data.map(d => d.y)];
+
+                traces = [{
+                    labels: labels,
+                    parents: parents,
+                    values: values,
+                    type: 'treemap',
+                    marker: {
+                        colors: ['rgba(255,255,255,0)', ...COLOR_PALETTE.slice(0, data.length)],
+                        line: { color: 'white', width: 2 }
+                    },
+                    textposition: 'middle center',
+                    textinfo: 'label+value+percent parent',
+                    hovertemplate: '<b>%{label}</b><br>Value: %{value}<br>Percent: %{percentParent}<extra></extra>'
+                }];
+                delete layout.xaxis;
+                delete layout.yaxis;
+            }
+            else if (type === 'funnel') {
+                traces = [{
+                    type: 'funnel',
+                    y: data.map(d => d.x),
+                    x: data.map(d => d.y),
+                    textposition: 'inside',
+                    textinfo: 'value+percent total',
+                    marker: {
+                        color: COLOR_PALETTE.slice(0, data.length),
+                        line: { color: 'white', width: 2 }
+                    },
+                    connector: { line: { color: 'royalblue', width: 3 } },
+                    hovertemplate: '<b>%{y}</b><br>Value: %{x}<extra></extra>'
+                }];
+                delete layout.xaxis;
+                delete layout.yaxis;
+            }
+            else {
+                // Standard 1D charts (bar, line, scatter, area)
+                if (colorField) {
+                    const colorGroups = [...new Set(data.map(d => d.color))];
+                    colorGroups.forEach((group, idx) => {
+                        const groupData = data.filter(d => d.color === group);
+
+                        let trace = {
+                            x: groupData.map(d => d.x),
+                            y: groupData.map(d => d.y),
+                            name: group,
+                            hovertemplate: `${dropZones.xAxis.name}: %{x}<br>${dropZones.yAxis.name}: %{y}<br>Group: ${group}<extra></extra>`
+                        };
+
+                        if (type === 'bar') {
+                            trace.type = 'bar';
+                            trace.marker = {
+                                color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                line: { color: 'white', width: 1 }
+                            };
+                        } else if (type === 'line') {
+                            trace.type = 'scatter';
+                            trace.mode = 'lines+markers';
+                            trace.line = {
+                                color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                width: 3
+                            };
+                            trace.marker = {
+                                color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                size: 8,
+                                line: { color: 'white', width: 1 }
+                            };
+                        } else if (type === 'area') {
+                            trace.type = 'scatter';
+                            trace.mode = 'lines';
+                            trace.fill = 'tozeroy';
+                            trace.line = {
+                                color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                width: 2
+                            };
+                            trace.fillcolor = COLOR_PALETTE[idx % COLOR_PALETTE.length].replace(')', ', 0.3)').replace('rgb', 'rgba');
+                        } else if (type === 'scatter') {
+                            trace.type = 'scatter';
+                            trace.mode = 'markers';
+                            trace.marker = {
+                                color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                size: 10,
+                                line: { color: 'white', width: 1 }
+                            };
+                        }
+
+                        traces.push(trace);
+                    });
+                } else {
+                    let trace = {
+                        x: data.map(d => d.x),
+                        y: data.map(d => d.y),
+                        hovertemplate: `${dropZones.xAxis.name}: %{x}<br>${dropZones.yAxis.name}: %{y}<extra></extra>`
+                    };
+
+                    if (type === 'bar') {
+                        trace.type = 'bar';
+                        trace.marker = {
+                            color: COLOR_PALETTE[0],
+                            line: { color: 'white', width: 1 }
+                        };
+                    } else if (type === 'line') {
+                        trace.type = 'scatter';
+                        trace.mode = 'lines+markers';
+                        trace.line = { color: COLOR_PALETTE[0], width: 3 };
+                        trace.marker = {
+                            color: COLOR_PALETTE[0],
+                            size: 8,
+                            line: { color: 'white', width: 1 }
+                        };
+                    } else if (type === 'area') {
+                        trace.type = 'scatter';
+                        trace.mode = 'lines';
+                        trace.fill = 'tozeroy';
+                        trace.line = { color: COLOR_PALETTE[0], width: 2 };
+                        const rgb = COLOR_PALETTE[0];
+                        trace.fillcolor = rgb.includes('#')
+                            ? rgb + '40'  // Add alpha to hex
+                            : rgb.replace(')', ', 0.3)').replace('rgb', 'rgba');
+                    } else if (type === 'scatter') {
+                        trace.type = 'scatter';
+                        trace.mode = 'markers';
+                        trace.marker = {
+                            color: COLOR_PALETTE[0],
+                            size: 10,
+                            line: { color: 'white', width: 1 }
+                        };
+                    }
+
+                    traces.push(trace);
+                }
+            }
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'cta_assault_visualization',
+                    height: 800,
+                    width: 1200,
+                    scale: 2
+                }
+            };
+
+            console.log('Plotting with', traces.length, 'trace(s)');
+
+            // Use Plotly.react to update or create the chart
+            Plotly.react(chartElement, traces, layout, config).then(() => {
+                console.log('Chart rendered successfully');
+            }).catch((error) => {
+                console.error('Plotly rendering error:', error);
+                // Purge the failed chart
+                try {
+                    Plotly.purge(chartElement);
+                } catch (e) {
+                    // Ignore
+                }
+                chartElement.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3>Chart Rendering Error</h3>
+                        <p>${error.message || 'Unknown error'}</p>
+                        <p style="font-size: 0.75rem; margin-top: 8px;">Try a different chart type or check console</p>
+                    </div>
+                `;
+            });
+        }
+
+        const SAVED_PLOTS_KEY = 'cta_viz_saved_plots_v1';
+
+        function getCurrentPlotConfig() {
+            if (!dropZones.xAxis || !dropZones.yAxis) {
+                alert('Set both X-Axis and Y-Axis before saving a plot.');
+                return null;
+            }
+
+            const chartType = document.getElementById('chartType').value;
+            let aggregation = document.getElementById('aggregationFunction').value;
+            if (dropZones.yAxis.isCount) {
+                aggregation = 'count';
+            }
+
+            const yearStart = document.getElementById('yearStart').value || null;
+            const yearEnd = document.getElementById('yearEnd').value || null;
+
+            return {
+                id: `custom_${Date.now()}`,
+                x: dropZones.xAxis.field,
+                xLabel: dropZones.xAxis.name,
+                y: dropZones.yAxis.field,
+                yLabel: dropZones.yAxis.name,
+                color: dropZones.color ? dropZones.color.field : null,
+                chartType,
+                aggregation,
+                filters: { yearStart, yearEnd },
+                createdAt: new Date().toISOString()
+            };
+        }
+
+        function saveCurrentPlot() {
+            const baseConfig = getCurrentPlotConfig();
+            if (!baseConfig) return;
+
+            let title = prompt('Enter a title for this plot:');
+            if (title === null) {
+                return;
+            }
+            title = title.trim();
+            if (!title) {
+                alert('Title is required to save a plot.');
+                return;
+            }
+
+            let desc = prompt('Enter a short description (max 15 words) for the ? tooltip:') || '';
+            desc = desc.trim();
+            if (desc) {
+                const words = desc.split(/\s+/);
+                if (words.length > 15) {
+                    alert('Description must be 15 words or fewer.');
+                    return;
+                }
+            }
+
+            baseConfig.title = title;
+            baseConfig.desc = desc;
+            baseConfig.savedLabel = new Date(baseConfig.createdAt).toLocaleString();
+
+            let existing = [];
+            try {
+                const raw = localStorage.getItem(SAVED_PLOTS_KEY);
+                if (raw) {
+                    existing = JSON.parse(raw);
+                    if (!Array.isArray(existing)) {
+                        existing = [];
+                    }
+                }
+            } catch (e) {
+                existing = [];
+            }
+
+            existing.unshift(baseConfig);
+            localStorage.setItem(SAVED_PLOTS_KEY, JSON.stringify(existing));
+
+            // Notify parent page (viz templates) if embedded
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'cta-viz-plot-saved' }, '*');
+                }
+            } catch (e) {
+                // Ignore cross-origin errors
+            }
+
+            alert('Plot saved to "My Plots". You can view it in the Viz Templates screen.');
+        }
+
+        // Download chart
+        function downloadChart() {
+            Plotly.downloadImage('chart', {
+                format: 'png',
+                width: 1200,
+                height: 800,
+                filename: 'cta_assault_visualization'
+            });
+        }
+    </script>
+</body>
+</html>

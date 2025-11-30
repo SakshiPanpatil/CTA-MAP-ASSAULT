@@ -2,9 +2,9 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, status
 
-from backend.app.core.config import settings
-from backend.app.core.security import create_access_token
-from backend.app.models.auth import TokenRequest, TokenResponse
+from ....core.config import settings
+from ....core.security import create_access_token
+from ....models.auth import TokenRequest, TokenResponse
 
 router = APIRouter()
 

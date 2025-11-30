@@ -3,9 +3,9 @@ from __future__ import annotations
 from threading import Lock, Thread
 from typing import Dict, Iterable, List
 
-from backend.app.models.bootstrap import BootstrapProgress, BootstrapResponse
-from backend.app.models.gtfs import BootstrapMetadata, BootstrapPayload, Route, Stop
-from backend.app.services.gtfs_loader import GTFSDataLoader, get_default_loader
+from ..models.bootstrap import BootstrapProgress, BootstrapResponse
+from ..models.gtfs import BootstrapMetadata, BootstrapPayload, Route, Stop
+from .gtfs_loader import GTFSDataLoader, get_default_loader
 
 
 class BootstrapCache:

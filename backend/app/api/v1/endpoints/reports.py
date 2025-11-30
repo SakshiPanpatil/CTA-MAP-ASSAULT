@@ -9,9 +9,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
-from backend.app.dependencies import require_token
-from backend.app.services.assaults_loader import AssaultDataLoader, get_assault_loader
-from backend.app.services.pdf_generator import SafetyReportGenerator
+from ....dependencies import require_token
+from ....services.assaults_loader import AssaultDataLoader, get_assault_loader
+from ....services.pdf_generator import SafetyReportGenerator
 
 router = APIRouter()
 

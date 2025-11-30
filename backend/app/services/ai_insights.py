@@ -12,7 +12,7 @@ from typing import Any
 import urllib.error
 import urllib.request
 
-from backend.app.core.config import settings
+from ..core.config import settings
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 def _call_local_llm(messages: list[dict[str, str]], *, model: str | None = None, max_tokens: int = 800, temperature: float = 0.6) -> str:
     """Call the local Ollama chat endpoint (no external network)."""
     model_name = model or settings.ollama_model
-    logger.info(f"🚀 Starting LLM call - Model: {model_name}, Max tokens: {max_tokens}")
+    logger.info(f"Starting LLM call - Model: {model_name}, Max tokens: {max_tokens}")
     start_time = time.time()
 
     payload = {
@@ -37,7 +37,7 @@ def _call_local_llm(messages: list[dict[str, str]], *, model: str | None = None,
         "keep_alive": "30m",  # Keep model loaded in VRAM
     }
 
-    logger.info(f"📡 Sending request to {settings.ollama_base_url}/api/chat")
+    logger.info(f"Sending request to {settings.ollama_base_url}/api/chat")
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         f"{settings.ollama_base_url}/api/chat",
@@ -53,23 +53,23 @@ def _call_local_llm(messages: list[dict[str, str]], *, model: str | None = None,
             response_text = parsed.get("message", {}).get("content", "").strip()
 
             elapsed = time.time() - start_time
-            logger.info(f"✅ LLM call completed in {elapsed:.2f}s - Response length: {len(response_text)} chars")
+            logger.info(f"LLM call completed in {elapsed:.2f}s - Response length: {len(response_text)} chars")
             return response_text
     except urllib.error.URLError as e:
         elapsed = time.time() - start_time
-        logger.error(f"❌ URLError after {elapsed:.2f}s: {e}")
+        logger.error(f"URLError after {elapsed:.2f}s: {e}")
         return ""
     except urllib.error.HTTPError as e:
         elapsed = time.time() - start_time
-        logger.error(f"❌ HTTPError after {elapsed:.2f}s: {e.code} - {e.reason}")
+        logger.error(f"HTTPError after {elapsed:.2f}s: {e.code} - {e.reason}")
         return ""
     except TimeoutError as e:
         elapsed = time.time() - start_time
-        logger.error(f"⏱️ Timeout after {elapsed:.2f}s: {e}")
+        logger.error(f"Timeout after {elapsed:.2f}s: {e}")
         return ""
     except json.JSONDecodeError as e:
         elapsed = time.time() - start_time
-        logger.error(f"❌ JSON decode error after {elapsed:.2f}s: {e}")
+        logger.error(f"JSON decode error after {elapsed:.2f}s: {e}")
         return ""
 
 
@@ -111,9 +111,9 @@ def generate_complete_report_insights(
     No LLM needed - instant results, professional quality, zero cost!
     """
     logger.info("="*80)
-    logger.info("🎯 TEMPLATE-BASED INSIGHTS - Generating comprehensive report")
-    logger.info(f"📊 Stats: {total_incidents} incidents, {total_injuries} injuries, Risk: {risk_level}")
-    logger.info(f"📍 Location: {location_context}")
+    logger.info("TEMPLATE-BASED INSIGHTS - Generating comprehensive report")
+    logger.info(f"Stats: {total_incidents} incidents, {total_injuries} injuries, Risk: {risk_level}")
+    logger.info(f"Location: {location_context}")
     overall_start = time.time()
 
     # Generate all sections using templates
@@ -137,11 +137,11 @@ def generate_complete_report_insights(
     }
 
     elapsed = time.time() - overall_start
-    logger.info(f"🎉 SUCCESS! All sections generated in {elapsed:.3f}s via TEMPLATES (instant!)")
-    logger.info(f"   ✓ Executive Summary: {len(insights['executive_summary'])} chars")
-    logger.info(f"   ✓ Pattern Analysis: {len(insights['pattern_analysis'])} chars")
-    logger.info(f"   ✓ Recommendations: {len(insights['recommendations'])} chars")
-    logger.info(f"   ✓ Plot Summaries: 4 sections")
+    logger.info(f"All sections generated in {elapsed:.3f}s via templates")
+    logger.info(f"   Executive Summary: {len(insights['executive_summary'])} chars")
+    logger.info(f"   Pattern Analysis: {len(insights['pattern_analysis'])} chars")
+    logger.info(f"   Recommendations: {len(insights['recommendations'])} chars")
+    logger.info(f"   Plot Summaries: 4 sections")
     logger.info("="*80)
 
     return insights
@@ -551,19 +551,19 @@ RETURN ONLY VALID JSON - NO OTHER TEXT."""
     )
 
     if response:
-        logger.info(f"📥 Received response from LLM - Length: {len(response)} chars")
-        logger.info("🔍 Parsing JSON response...")
+        logger.info(f"Received response from LLM - Length: {len(response)} chars")
+        logger.info("Parsing JSON response...")
         try:
             # Clean response if it has markdown JSON blocks
             cleaned = response.strip()
             if cleaned.startswith("```"):
-                logger.info("🧹 Cleaning markdown code blocks from response...")
+                logger.info("Cleaning markdown code blocks from response...")
                 # Remove ```json and ``` markers
                 cleaned = re.sub(r'^```(?:json)?\s*\n', '', cleaned)
                 cleaned = re.sub(r'\n```\s*$', '', cleaned)
 
             parsed = json.loads(cleaned)
-            logger.info("✅ JSON parsed successfully!")
+            logger.info("JSON parsed successfully")
 
             # Validate all required keys exist
             required_keys = [
@@ -572,29 +572,29 @@ RETURN ONLY VALID JSON - NO OTHER TEXT."""
                 "plot_summary_event_types", "plot_summary_severity"
             ]
 
-            logger.info(f"🔑 Validating required keys: {required_keys}")
+            logger.info(f"Validating required keys: {required_keys}")
             if all(key in parsed for key in required_keys):
                 elapsed = time.time() - overall_start
-                logger.info(f"🎉 SUCCESS! All sections generated in {elapsed:.2f}s via UNIFIED CALL")
-                logger.info(f"   ✓ Executive Summary: {len(parsed['executive_summary'])} chars")
-                logger.info(f"   ✓ Pattern Analysis: {len(parsed['pattern_analysis'])} chars")
-                logger.info(f"   ✓ Recommendations: {len(parsed['recommendations'])} chars")
-                logger.info(f"   ✓ Plot Summaries: 4 sections")
+                logger.info(f"All sections generated in {elapsed:.2f}s via unified call")
+                logger.info(f"   Executive Summary: {len(parsed['executive_summary'])} chars")
+                logger.info(f"   Pattern Analysis: {len(parsed['pattern_analysis'])} chars")
+                logger.info(f"   Recommendations: {len(parsed['recommendations'])} chars")
+                logger.info(f"   Plot Summaries: 4 sections")
                 logger.info("="*80)
                 return parsed
             else:
                 missing = [k for k in required_keys if k not in parsed]
-                logger.warning(f"⚠️ Missing required keys: {missing}")
+                logger.warning(f"Missing required keys: {missing}")
         except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON parsing failed: {e}")
+            logger.error(f"JSON parsing failed: {e}")
             logger.error(f"   Response preview: {response[:200]}...")
         except KeyError as e:
-            logger.error(f"❌ KeyError during validation: {e}")
+            logger.error(f"KeyError during validation: {e}")
     else:
-        logger.error("❌ Empty response from LLM")
+        logger.error("Empty response from LLM")
 
     # Fallback to individual calls if unified fails
-    logger.warning("⚠️ Unified call failed - falling back to individual calls")
+    logger.warning("Unified call failed - falling back to individual calls")
     return _fallback_individual_calls(
         total_incidents, total_injuries, date_range, location_context,
         severity_breakdown, incident_summaries, temporal_patterns,
@@ -639,7 +639,7 @@ def _fallback_individual_calls(
     severity_sum = generate_plot_summary("severity", plot_summaries_data.get("severity", {}))
 
     elapsed = time.time() - fallback_start
-    logger.info(f"✅ FALLBACK completed in {elapsed:.2f}s (7 individual calls)")
+    logger.info(f"FALLBACK completed in {elapsed:.2f}s (7 individual calls)")
 
     return {
         "executive_summary": exec_summary,

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from backend.app.dependencies import require_token
-from backend.app.models.assaults import AssaultIncident
-from backend.app.services.assaults_loader import AssaultDataLoader, get_assault_loader
+from ....dependencies import require_token
+from ....models.assaults import AssaultIncident
+from ....services.assaults_loader import AssaultDataLoader, get_assault_loader
 
 router = APIRouter()
 

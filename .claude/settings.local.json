@@ -12,7 +12,9 @@
       "Bash(ollama list:*)",
       "Bash(timeout:*)",
       "Bash(findstr:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pkill:*)",
+      "Bash(copy viz_templates.html viz_templates_backup.html)"
     ],
     "deny": [],
     "ask": []

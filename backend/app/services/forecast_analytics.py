@@ -302,11 +302,12 @@ def create_seasonal_decomposition_plot(monthly_series: pd.Series, title: str = "
 
         # Calculate trend direction
         trend_data = decomposition.trend.dropna()
-        trend_change = ((trend_data.iloc[-1] - trend_data.iloc[0]) / trend_data.iloc[0]) * 100
-        trend_label = f"{'Increasing' if trend_change > 0 else 'Decreasing'} ({trend_change:+.1f}%)"
-        axes[1].text(0.02, 0.98, trend_label, transform=axes[1].transAxes,
-                    fontsize=10, verticalalignment='top', fontweight='bold',
-                    bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.9))
+        if len(trend_data) >= 2:
+            trend_change = ((trend_data.iloc[-1] - trend_data.iloc[0]) / trend_data.iloc[0]) * 100 if trend_data.iloc[0] != 0 else 0
+            trend_label = f"{'Increasing' if trend_change > 0 else 'Decreasing'} ({trend_change:+.1f}%)"
+            axes[1].text(0.02, 0.98, trend_label, transform=axes[1].transAxes,
+                        fontsize=10, verticalalignment='top', fontweight='bold',
+                        bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.9))
 
         # Seasonal
         decomposition.seasonal.plot(ax=axes[2], color=COLORS['success'], linewidth=2)
@@ -355,9 +356,13 @@ def generate_why_analysis(result: dict, monthly_series: pd.Series, title: str = 
     change_pct = ((fcst_avg - hist_avg) / hist_avg) * 100
 
     # Historical trend analysis
-    recent_3mo = monthly_series.iloc[-3:].mean()
-    older_3mo = monthly_series.iloc[-6:-3].mean()
-    recent_trend = ((recent_3mo - older_3mo) / older_3mo) * 100 if older_3mo > 0 else 0
+    if len(monthly_series) >= 6:
+        recent_3mo = monthly_series.iloc[-3:].mean()
+        older_3mo = monthly_series.iloc[-6:-3].mean()
+        recent_trend = ((recent_3mo - older_3mo) / older_3mo) * 100 if older_3mo > 0 else 0
+    else:
+        # Not enough data for 6-month comparison
+        recent_trend = 0
 
     # Seasonal analysis
     monthly_avg_by_month = {}
@@ -368,8 +373,16 @@ def generate_why_analysis(result: dict, monthly_series: pd.Series, title: str = 
         monthly_avg_by_month[month].append(val)
 
     seasonal_pattern = {m: np.mean(vals) for m, vals in monthly_avg_by_month.items()}
-    peak_month = max(seasonal_pattern, key=seasonal_pattern.get)
-    low_month = min(seasonal_pattern, key=seasonal_pattern.get)
+
+    # Handle empty seasonal pattern
+    if seasonal_pattern:
+        peak_month = max(seasonal_pattern, key=seasonal_pattern.get)
+        low_month = min(seasonal_pattern, key=seasonal_pattern.get)
+    else:
+        # Default to current month if no data
+        current_month = datetime.now().month
+        peak_month = current_month
+        low_month = current_month
 
     month_names = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
                    7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"}

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -28,6 +28,19 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def root(request: Request) -> HTMLResponse:
+        """Landing page with CTA logo"""
+        context = {"request": request}
+        return templates.TemplateResponse("index.html", context)
+
+    @app.get("/cards", response_class=HTMLResponse)
+    async def cards(request: Request) -> HTMLResponse:
+        """Card selection page"""
+        context = {"request": request}
+        return templates.TemplateResponse("cards.html", context)
+
+    @app.get("/map", response_class=HTMLResponse)
+    async def map_view(request: Request) -> HTMLResponse:
+        """Assaults on Map - Main map functionality"""
         expires_delta = timedelta(minutes=settings.jwt_access_token_expire_minutes)
         token = create_access_token("cta-map-client", expires_delta)
         expires_at = datetime.now(timezone.utc) + expires_delta
@@ -37,6 +50,27 @@ def create_app() -> FastAPI:
             "token_expires_at": expires_at.isoformat(),
         }
         return templates.TemplateResponse("route.html", context)
+
+    @app.get("/visualization", response_class=HTMLResponse)
+    async def visualization(request: Request) -> HTMLResponse:
+        """Assault Visualization - Interactive drag-and-drop builder"""
+        context = {"request": request}
+        return templates.TemplateResponse("visualization.html", context)
+
+    @app.get("/viz-templates", response_class=HTMLResponse)
+    async def viz_templates(request: Request) -> HTMLResponse:
+        """Assault Visualization Templates - 20 pre-built charts"""
+        context = {"request": request}
+        return templates.TemplateResponse("viz_templates.html", context)
+
+    @app.get("/assaults.csv")
+    async def assaults_csv() -> FileResponse:
+        """Serve the cleaned CTA assaults CSV for front-end visualizations."""
+        return FileResponse(
+            path=settings.assault_data_file,
+            media_type="text/csv",
+            filename="Cleaned_CTA_Bus_Data.csv",
+        )
 
     return app
 

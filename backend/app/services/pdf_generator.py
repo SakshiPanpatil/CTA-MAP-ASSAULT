@@ -33,11 +33,13 @@ logger = logging.getLogger(__name__)
 class ComprehensiveSafetyReport:
     """Generate comprehensive AI-powered PDF safety reports."""
 
+    # CTA MILITARY CODE SYSTEM - Risk Assessment Matrix Colors
     CTA_BLUE = colors.HexColor("#0c5ed7")
     CTA_DARK = colors.HexColor("#0b2c67")
-    DANGER = colors.HexColor("#b71c1c")
-    WARNING = colors.HexColor("#fb8c00")
-    SUCCESS = colors.HexColor("#1f8b4c")
+    DANGER = colors.HexColor("#DC143C")      # Red (Unacceptable - Critical)
+    WARNING = colors.HexColor("#FF8C00")     # Orange (Undesirable)
+    SUCCESS = colors.HexColor("#228B22")     # Green (Acceptable)
+    YELLOW = colors.HexColor("#FFD700")      # Yellow (Accept w/ Review)
     MUTED = colors.HexColor("#5f6b7b")
     LIGHT_BG = colors.HexColor("#f8f9fa")
 
@@ -239,11 +241,21 @@ class ComprehensiveSafetyReport:
         for idx, inc in enumerate(incidents, 1):
             incident_data = []
 
-            # Header row - MORE SPECIFIC
+            # Header row - MORE SPECIFIC - CTA MATRIX COLORS
             event_type = self._safe_text(inc.get("event_type") or "Unknown Event", 60)
             event_type_group = inc.get("event_type_group", "")
             severity = inc.get("severity_score", 1)
-            sev_color = self.DANGER if severity >= 4 else self.WARNING if severity >= 3 else self.SUCCESS
+            # CTA Risk Matrix color mapping
+            if severity >= 5:
+                sev_color = self.DANGER      # Red (Critical)
+            elif severity >= 4:
+                sev_color = self.WARNING     # Orange (High)
+            elif severity >= 3:
+                sev_color = self.YELLOW      # Yellow (Medium)
+            elif severity >= 2:
+                sev_color = colors.HexColor("#9ACD32")  # Yellow-Green
+            else:
+                sev_color = self.SUCCESS     # Green (Low)
 
             # Include incident number if available
             inc_number = inc.get("incident_number", f"INC-{idx:04d}")
@@ -328,7 +340,7 @@ class ComprehensiveSafetyReport:
                             radius_km: float, all_assaults: list[dict[str, Any]]) -> bytes:
         """Generate comprehensive stop safety report."""
         logger.info("="*80)
-        logger.info(f"📄 STOP REPORT - Generating for: {stop_name}")
+        logger.info(f"STOP REPORT - Generating for: {stop_name}")
         logger.info(f"   Location: ({stop_lat:.4f}, {stop_lon:.4f}), Radius: {radius_km}km")
 
         buffer = io.BytesIO()
@@ -337,7 +349,7 @@ class ComprehensiveSafetyReport:
         story = []
 
         # Filter & analyze FIRST to get count
-        logger.info(f"🔍 Filtering incidents within {radius_km}km radius...")
+        logger.info(f"Filtering incidents within {radius_km}km radius...")
         nearby = report_analytics.filter_assaults_by_radius(all_assaults, stop_lat, stop_lon, radius_km)
         logger.info(f"   Found {len(nearby)} incidents nearby")
 
@@ -375,7 +387,7 @@ class ComprehensiveSafetyReport:
             ))
         else:
             # UNIFIED AI CALL - Generate ALL insights in ONE shot (8x-9x faster!)
-            logger.info("📊 Preparing data for unified AI analysis...")
+            logger.info("Preparing data for unified AI analysis...")
             # Prepare all data first
             dates = [report_analytics.parse_assault_date(a.get("event_date")) for a in nearby]
             dates = [d for d in dates if d is not None]
@@ -391,7 +403,7 @@ class ComprehensiveSafetyReport:
             severities = [a.get("severity_score", 1) for a in nearby]
             sev_counts = Counter(severities) if severities else {}
 
-            logger.info("🤖 Calling UNIFIED AI insights generator...")
+            logger.info("Calling unified AI insights generator...")
             # Single unified LLM call for ALL text insights
             all_insights = ai_insights.generate_complete_report_insights(
                 total_incidents=len(nearby),
@@ -413,17 +425,17 @@ class ComprehensiveSafetyReport:
                 risk_level=metrics["risk_level"],
                 key_findings=metrics
             )
-            logger.info("✅ AI insights received! Building PDF sections...")
+            logger.info("AI insights received; building PDF sections...")
 
             # Executive Summary (using unified insights)
-            logger.info("   📝 Adding Executive Summary section...")
+            logger.info("   Adding Executive Summary section...")
             story.append(Paragraph("Executive Summary", self.styles["CTASectionHeader"]))
             story.append(Paragraph(self._safe_text(all_insights.get("executive_summary", ""), 1500),
                                  self.styles["CTAHighlightBox"]))
             story.append(Spacer(1, 0.15 * inch))
 
             # Temporal Analysis
-            logger.info("   📈 Generating plots and temporal analysis...")
+            logger.info("   Generating plots and temporal analysis...")
             story.append(Paragraph("Temporal Analysis", self.styles["CTASectionHeader"]))
 
             # Timeline with AI summary
@@ -609,21 +621,21 @@ class ComprehensiveSafetyReport:
             story.append(PageBreak())
 
             # Complete incident listing
-            logger.info("   📋 Adding complete incident listings...")
+            logger.info("   Adding complete incident listings...")
             self._add_all_incidents_detailed(story, nearby)
 
-        logger.info("📦 Building final PDF document...")
+        logger.info("Building final PDF document...")
         doc.build(story)
         buffer.seek(0)
         pdf_bytes = buffer.read()
-        logger.info(f"✅ STOP REPORT COMPLETE - PDF size: {len(pdf_bytes)} bytes")
+        logger.info(f"STOP REPORT COMPLETE - PDF size: {len(pdf_bytes)} bytes")
         logger.info("="*80)
         return pdf_bytes
 
     def generate_assault_cluster_report(self, assaults: list[dict[str, Any]]) -> bytes:
         """Generate assault cluster report."""
         logger.info("="*80)
-        logger.info(f"📄 CLUSTER REPORT - Generating for {len(assaults)} incidents")
+        logger.info(f"CLUSTER REPORT - Generating for {len(assaults)} incidents")
 
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=0.75*inch, leftMargin=0.75*inch,
@@ -678,7 +690,7 @@ class ComprehensiveSafetyReport:
         self._add_metrics_grid(story, metrics_data)
 
         # UNIFIED AI CALL - Prepare all data
-        logger.info("📊 Preparing cluster data for unified AI analysis...")
+        logger.info("Preparing cluster data for unified AI analysis...")
         dates = [report_analytics.parse_assault_date(a.get("event_date")) for a in assaults]
         dates = [d for d in dates if d is not None]
         date_counts = Counter([d.strftime("%Y-%m") for d in dates]) if dates else {}
@@ -693,7 +705,7 @@ class ComprehensiveSafetyReport:
         severities = [a.get("severity_score", 1) for a in assaults]
         sev_counts = Counter(severities) if severities else {}
 
-        logger.info("🤖 Calling UNIFIED AI insights generator for cluster...")
+        logger.info("Calling unified AI insights generator for cluster...")
         # Single unified LLM call for ALL text insights
         all_insights = ai_insights.generate_complete_report_insights(
             total_incidents=total,
@@ -715,7 +727,7 @@ class ComprehensiveSafetyReport:
             risk_level=risk_level,
             key_findings={"incidents": total, "injuries": total_injuries, "risk": risk_level}
         )
-        logger.info("✅ AI insights received! Building cluster PDF sections...")
+        logger.info("AI insights received; building cluster PDF sections...")
 
         # Executive Summary
         logger.info("   📝 Adding Executive Summary...")
@@ -725,7 +737,7 @@ class ComprehensiveSafetyReport:
         story.append(Spacer(1, 0.15*inch))
 
         # Temporal Patterns
-        logger.info("   📈 Generating cluster plots...")
+        logger.info("   Generating cluster plots...")
         story.append(Paragraph("Temporal Patterns", self.styles["CTASectionHeader"]))
 
         time_series = report_analytics.create_time_series_plot(assaults)
@@ -911,14 +923,14 @@ class ComprehensiveSafetyReport:
         story.append(PageBreak())
 
         # Complete incident listing
-        logger.info("   📋 Adding complete incident listings...")
+        logger.info("   Adding complete incident listings...")
         self._add_all_incidents_detailed(story, assaults)
 
-        logger.info("📦 Building final cluster PDF document...")
+        logger.info("Building final cluster PDF document...")
         doc.build(story)
         buffer.seek(0)
         pdf_bytes = buffer.read()
-        logger.info(f"✅ CLUSTER REPORT COMPLETE - PDF size: {len(pdf_bytes)} bytes")
+        logger.info(f"CLUSTER REPORT COMPLETE - PDF size: {len(pdf_bytes)} bytes")
         logger.info("="*80)
         return pdf_bytes
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.dependencies import get_loader, require_token
-from backend.app.models.bootstrap import BootstrapResponse
-from backend.app.models.gtfs import (
+from ....dependencies import get_loader, require_token
+from ....models.bootstrap import BootstrapResponse
+from ....models.gtfs import (
     GTFSResource,
     Route,
     RouteGeometry,
@@ -12,8 +12,8 @@ from backend.app.models.gtfs import (
     Stop,
     Trip,
 )
-from backend.app.services.bootstrap_cache import get_bootstrap_cache
-from backend.app.services.gtfs_loader import GTFSDataLoader
+from ....services.bootstrap_cache import get_bootstrap_cache
+from ....services.gtfs_loader import GTFSDataLoader
 
 router = APIRouter()
 

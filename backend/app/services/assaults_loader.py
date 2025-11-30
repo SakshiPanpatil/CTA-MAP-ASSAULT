@@ -5,8 +5,8 @@ from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 
-from backend.app.core.config import settings
-from backend.app.models.assaults import AssaultIncident
+from ..core.config import settings
+from ..models.assaults import AssaultIncident
 
 
 class AssaultDataLoader:

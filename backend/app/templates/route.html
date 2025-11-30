@@ -166,6 +166,45 @@
             font-weight: 700;
         }
 
+        .back-nav {
+            position: absolute;
+            bottom: clamp(12px, 3vh, 24px);
+            left: clamp(12px, 4vw, 24px);
+            z-index: 1050;
+        }
+
+        .back-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(26, 45, 97, 0.15);
+            text-decoration: none;
+            color: var(--cta-dark);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-nav a:hover {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 12px 30px rgba(26, 45, 97, 0.25);
+            transform: translateX(-5px);
+        }
+
+        .back-nav svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--cta-blue);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
         .legend-panel {
             position: absolute;
             top: clamp(12px, 3vh, 24px);
@@ -620,6 +659,15 @@
     <div class="map-stage">
         <div id="map"></div>
 
+        <div class="back-nav">
+            <a href="/cards">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Modules
+            </a>
+        </div>
+
         <aside class="info-panel">
         <div class="panel-header">
             <img src="{{ url_for('static', path='cta_logo.png') }}" alt="CTA logo">
@@ -644,15 +692,15 @@
             <h2 style="font-size: 0.9rem; margin: 0 0 10px 0; color: var(--cta-dark); font-weight: 600;">Map View</h2>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                 <button id="view-stops" class="view-toggle" data-view="stops">
-                    <span style="font-size: 1.2rem;">🚏</span>
+                    <span class="bi bi-signpost-2" style="font-size: 1.1rem;"></span>
                     <span style="font-size: 0.75rem;">Stops</span>
                 </button>
                 <button id="view-assaults" class="view-toggle" data-view="assaults">
-                    <span style="font-size: 1.2rem;">⚠️</span>
+                    <span class="bi bi-exclamation-triangle-fill" style="font-size: 1.1rem;"></span>
                     <span style="font-size: 0.75rem;">Assaults</span>
                 </button>
                 <button id="view-both" class="view-toggle active" data-view="both">
-                    <span style="font-size: 1.2rem;">🗺️</span>
+                    <span class="bi bi-map" style="font-size: 1.1rem;"></span>
                     <span style="font-size: 0.75rem;">Both</span>
                 </button>
             </div>
@@ -701,26 +749,26 @@
 
     </aside>
         <div class="legend-panel">
-            <h2>Assault Count Legend</h2>
+            <h2>Assault Risk Level (CTA Matrix)</h2>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#2f7d32;"></span>
-                1 incident
+                <span class="legend-dot" style="background:#228B22;"></span>
+                1 incident (Low)
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#4f8f2f;"></span>
-                2-4 incidents
+                <span class="legend-dot" style="background:#9ACD32;"></span>
+                2-4 incidents (Acceptable)
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#d4a017;"></span>
-                5-9 incidents
+                <span class="legend-dot" style="background:#FFD700;"></span>
+                5-9 incidents (Review)
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#c1440e;"></span>
-                10-19 incidents
+                <span class="legend-dot" style="background:#FF8C00;"></span>
+                10-19 incidents (Elevated)
             </div>
             <div class="legend-entry">
-                <span class="legend-dot" style="background:#2b2b2b;"></span>
-                20+ incidents
+                <span class="legend-dot" style="background:#DC143C;"></span>
+                20+ incidents (Critical)
             </div>
             <div class="panel-divider" style="margin:12px 0;"></div>
             <div class="active-routes" id="active-routes-panel">
@@ -788,9 +836,9 @@ function debounce(func, delay) {
     let timeoutId;
     return function(...args) {
         clearTimeout(timeoutId);
-        console.log(`⏱️ Filter update queued... (applying in ${delay/1000}s)`);
+        console.log(`Filter update queued (applying in ${delay/1000}s)...`);
         timeoutId = setTimeout(() => {
-            console.log('✅ Applying filter now...');
+            console.log('Applying filter now...');
             func.apply(this, args);
         }, delay);
     };
@@ -812,17 +860,20 @@ function summarizeStopSafety(lat, lon) {
     });
 
     const count = incidents.length;
-    let label = 'Calm area';
-    let color = '#1f8b4c';
-    if (count >= 10) {
-        label = 'Hotspot';
-        color = '#b71c1c';
-    } else if (count >= 5) {
+    let label = 'Acceptable';
+    let color = '#228B22'; // Green
+    if (count >= 20) {
+        label = 'Critical';
+        color = '#DC143C'; // Red (Unacceptable)
+    } else if (count >= 10) {
         label = 'Elevated';
-        color = '#fb8c00';
-    } else if (count >= 1) {
-        label = 'Watchful';
-        color = '#fdd835';
+        color = '#FF8C00'; // Orange (Undesirable)
+    } else if (count >= 5) {
+        label = 'Review';
+        color = '#FFD700'; // Yellow (Accept w/ Review)
+    } else if (count >= 2) {
+        label = 'Acceptable';
+        color = '#9ACD32'; // Yellow-Green
     }
     return {
         count,
@@ -857,37 +908,37 @@ function getGridConfig(zoom) {
     }
 }
 
-// Get marker style based on count
+// Get marker style based on count - CTA MILITARY CODE SYSTEM
 function getCountStyle(count, zoom) {
     let size, bgColor, textColor, fontSize, borderWidth;
 
     if (count >= 20) {
         size = Math.min(50, 35 + zoom * 1.2);
-        bgColor = '#2b2b2b'; // critical (black)
+        bgColor = '#DC143C'; // Critical (RED - Unacceptable)
         textColor = '#ffffff';
         fontSize = '1.0rem';
         borderWidth = 3;
     } else if (count >= 10) {
         size = Math.min(42, 30 + zoom * 1);
-        bgColor = '#c1440e'; // high (red-brown)
+        bgColor = '#FF8C00'; // Elevated (ORANGE - Undesirable)
         textColor = '#ffffff';
         fontSize = '0.95rem';
         borderWidth = 3;
     } else if (count >= 5) {
         size = Math.min(36, 26 + zoom * 0.8);
-        bgColor = '#d4a017'; // elevated (amber)
+        bgColor = '#FFD700'; // Review (YELLOW - Accept w/ Review)
         textColor = '#000000';
         fontSize = '0.85rem';
         borderWidth = 2;
     } else if (count >= 2) {
         size = Math.min(30, 22 + zoom * 0.6);
-        bgColor = '#4f8f2f'; // guarded (olive)
-        textColor = '#ffffff';
+        bgColor = '#9ACD32'; // Acceptable (YELLOW-GREEN - Accept w/ Review)
+        textColor = '#000000';
         fontSize = '0.8rem';
         borderWidth = 2;
     } else {
         size = Math.min(24, 18 + zoom * 0.5);
-        bgColor = '#2f7d32'; // low (green)
+        bgColor = '#228B22'; // Low (GREEN - Acceptable)
         textColor = '#ffffff';
         fontSize = '0.75rem';
         borderWidth = 2;
@@ -1090,21 +1141,45 @@ function showLoadingOverlay(message) {
         <div style="text-align: center; color: white;">
             <div style="width: 80px; height: 80px; border: 6px solid #f3f3f3; border-top: 6px solid #0c5ed7; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
             <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">${message}</div>
-            <div style="font-size: 14px; color: #ccc;">This may take 15-30 seconds...</div>
-            <div id="pdf-progress-bar" style="width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin: 20px auto; overflow: hidden;">
-                <div style="width: 0%; height: 100%; background: linear-gradient(90deg, #0c5ed7, #1990ff); animation: progress 20s linear forwards;"></div>
+            <div id="pdf-status-text" style="font-size: 14px; color: #ccc;">Preparing report...</div>
+            <div id="pdf-progress-percent" style="font-size: 16px; font-weight: 600; margin-top: 12px;">0%</div>
+            <div style="width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin: 20px auto; overflow: hidden;">
+                <div id="pdf-progress-bar-inner" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0c5ed7, #1990ff); transition: width 0.3s ease;"></div>
             </div>
         </div>
         <style>
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            @keyframes progress { 0% { width: 0%; } 100% { width: 95%; } }
         </style>
     `;
     document.body.appendChild(overlay);
     return overlay;
 }
 
+function updateProgressBar(percent, statusText) {
+    const clamped = Math.min(percent, 100);
+    const progressBar = document.getElementById('pdf-progress-bar-inner');
+    const statusEl = document.getElementById('pdf-status-text');
+    const percentEl = document.getElementById('pdf-progress-percent');
+
+    if (progressBar) {
+        progressBar.style.width = `${clamped}%`;
+    }
+    if (percentEl) {
+        percentEl.textContent = `${Math.round(clamped)}%`;
+    }
+    if (statusEl && statusText) {
+        statusEl.textContent = statusText;
+    }
+}
+
+function startProgressTracking() {
+}
+
+function stopProgressTracking() {
+}
+
 function hideLoadingOverlay() {
+    stopProgressTracking();
     const overlay = document.getElementById('pdf-loading-overlay');
     if (overlay) overlay.remove();
 }
@@ -1113,8 +1188,9 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
     await ensureAuthenticated();
 
     const overlay = showLoadingOverlay(`Generating Safety Report: ${stopName}...`);
+    startProgressTracking();
 
-    console.log(`%c🚏 STOP SAFETY REPORT`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
+    console.log(`%cSTOP SAFETY REPORT`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
     console.log(`   Stop: ${stopName} (ID: ${stopId})`);
     console.log(`   Location: (${stopLat.toFixed(4)}, ${stopLon.toFixed(4)})`);
     console.log(`   Radius: ${radiusKm}km`);
@@ -1126,6 +1202,8 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
         `radius_km=${radiusKm}`;
 
     try {
+        updateProgressBar(20, 'Requesting report from server...');
+
         const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${AUTH.token}`
@@ -1136,8 +1214,11 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
             throw new Error(`Failed to generate PDF: ${response.status}`);
         }
 
+        updateProgressBar(60, 'Processing report data...');
         const blob = await response.blob();
-        console.log(`   ✅ PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+
+        console.log(`   PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+        updateProgressBar(90, 'Preparing download...');
 
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1148,11 +1229,18 @@ async function downloadStopPDF(stopId, stopName, stopLat, stopLon, radiusKm = 0.
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
-        console.log(`   💾 Download started: CTA_Stop_Safety_Report_${stopId}_${stopName.replace(/\s+/g, '_')}.pdf`);
-        hideLoadingOverlay();
+        updateProgressBar(100, 'Download complete!');
+        console.log(`   Download started: CTA_Stop_Safety_Report_${stopId}_${stopName.replace(/\s+/g, '_')}.pdf`);
+
+        // Brief delay to show 100% completion
+        setTimeout(() => {
+            stopProgressTracking();
+            hideLoadingOverlay();
+        }, 500);
     } catch (error) {
+        stopProgressTracking();
         hideLoadingOverlay();
-        console.log(`%c❌ REPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
+        console.log(`%cREPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
         console.error('   Error details:', error);
         alert('Failed to generate PDF report. Please try again.');
     }
@@ -1164,13 +1252,16 @@ async function downloadAssaultClusterPDF(incidentIds) {
     // Get filter context for professional overlay message
     const filterContext = DATA.filters.eventType || DATA.filters.eventGroup || 'Selected Incidents';
     const overlay = showLoadingOverlay(`Generating Analysis Report: ${filterContext}...`);
+    startProgressTracking();
 
-    console.log(`%c📊 CLUSTER REPORT GENERATION`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
+    console.log(`%cCLUSTER REPORT GENERATION`, 'color: #0c5ed7; font-weight: bold; font-size: 14px;');
     console.log(`   Filter: ${filterContext}`);
     console.log(`   Incidents: ${incidentIds.length}`);
     console.log(`   Status: Requesting PDF from backend...`);
 
     try {
+        updateProgressBar(20, 'Requesting cluster analysis...');
+
         const response = await fetch(`${REPORTS_BASE}/assault-cluster`, {
             method: 'POST',
             headers: {
@@ -1184,8 +1275,11 @@ async function downloadAssaultClusterPDF(incidentIds) {
             throw new Error(`Failed to generate PDF: ${response.status}`);
         }
 
+        updateProgressBar(60, 'Processing incident data...');
         const blob = await response.blob();
-        console.log(`   ✅ PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+
+        console.log(`   PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
+        updateProgressBar(90, 'Preparing download...');
 
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1196,11 +1290,18 @@ async function downloadAssaultClusterPDF(incidentIds) {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
-        console.log(`   💾 Download started: CTA_Assault_Cluster_Report_${incidentIds.length}_incidents.pdf`);
-        hideLoadingOverlay();
+        updateProgressBar(100, 'Download complete!');
+        console.log(`   Download started: CTA_Assault_Cluster_Report_${incidentIds.length}_incidents.pdf`);
+
+        // Brief delay to show 100% completion
+        setTimeout(() => {
+            stopProgressTracking();
+            hideLoadingOverlay();
+        }, 500);
     } catch (error) {
+        stopProgressTracking();
         hideLoadingOverlay();
-        console.log(`%c❌ REPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
+        console.log(`%cREPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
         console.error('   Error details:', error);
         alert('Failed to generate PDF report. Please try again.');
     }
@@ -1316,10 +1417,11 @@ const assaultHeatLayer = L.heatLayer([], {
     blur: initialHeatConfig.blur,
     maxZoom: 16,
     gradient: {
-        0.0: '#4caf50',
-        0.35: '#f9a825',
-        0.6: '#fb8c00',
-        1.0: '#b71c1c',
+        0.0: '#228B22',   // Green (Acceptable)
+        0.25: '#9ACD32',  // Yellow-Green (Acceptable)
+        0.5: '#FFD700',   // Yellow (Accept w/ Review)
+        0.75: '#FF8C00',  // Orange (Undesirable)
+        1.0: '#DC143C',   // Red (Unacceptable/Critical)
     },
 }).addTo(map);
 
@@ -1516,11 +1618,11 @@ function applyAssaultFilters() {
             activeFilters.push(`Year: ${yearRange}`);
         }
 
-        console.log(`%c🔍 FILTERS ACTIVE`, 'color: #0c5ed7; font-weight: bold; font-size: 12px;');
+        console.log(`%cFILTERS ACTIVE`, 'color: #0c5ed7; font-weight: bold; font-size: 12px;');
         console.log(`   ${activeFilters.join(' + ')}`);
-        console.log(`   📊 Showing ${DATA.filteredAssaults.length} of ${DATA.assaults.length} incidents (${(DATA.filteredAssaults.length/DATA.assaults.length*100).toFixed(1)}%)`);
+        console.log(`   Showing ${DATA.filteredAssaults.length} of ${DATA.assaults.length} incidents (${(DATA.filteredAssaults.length/DATA.assaults.length*100).toFixed(1)}%)`);
     } else {
-        console.log(`%c📊 ALL INCIDENTS`, 'color: #666; font-weight: bold; font-size: 12px;');
+        console.log(`%cALL INCIDENTS`, 'color: #666; font-weight: bold; font-size: 12px;');
         console.log(`   Showing all ${DATA.assaults.length} incidents (no filters applied)`);
     }
 
@@ -1707,12 +1809,13 @@ function handleAssaultMarkerVisibility() {
                 const operatorInjuries = Number(inc.transit_vehicle_operator_injuries) || 0;
                 const riderInjuries = Number(inc.transit_vehicle_rider_injuries) || 0;
 
-                // Determine severity badge color
-                let severityColor = '#4caf50';
+                // Determine severity badge color - CTA MATRIX
+                let severityColor = '#228B22'; // Green (Low)
                 const severity = inc.severity_score || 1;
-                if (severity >= 4) severityColor = '#b71c1c';
-                else if (severity >= 3) severityColor = '#fb8c00';
-                else if (severity >= 2) severityColor = '#fdd835';
+                if (severity >= 5) severityColor = '#DC143C';      // Red (Critical)
+                else if (severity >= 4) severityColor = '#FF8C00'; // Orange (High)
+                else if (severity >= 3) severityColor = '#FFD700'; // Yellow (Medium)
+                else if (severity >= 2) severityColor = '#9ACD32'; // Yellow-Green (Acceptable)
 
                 popupContent += `
                     <div style="margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-left: 4px solid ${severityColor}; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
@@ -1726,16 +1829,16 @@ function handleAssaultMarkerVisibility() {
                         </div>
 
                         <div style="color: #666; font-size: 0.8rem; margin-bottom: 4px;">
-                            <strong>📅 Date:</strong> ${escapeHtml(date)} ${time ? `at ${escapeHtml(time)}` : ''}
+                            <strong>Date:</strong> ${escapeHtml(date)} ${time ? `at ${escapeHtml(time)}` : ''}
                         </div>
 
                         <div style="color: #666; font-size: 0.8rem; margin-bottom: 4px;">
-                            <strong>📍 Location:</strong> ${escapeHtml(location)}
+                            <strong>Location:</strong> ${escapeHtml(location)}
                         </div>
 
                         ${injuries > 0 ? `
                         <div style="color: #d32f2f; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
-                            <strong>🚑 Injuries:</strong> ${injuries} total
+                            <strong>Injuries:</strong> ${injuries} total
                             ${operatorInjuries > 0 ? ` (${operatorInjuries} operator)` : ''}
                             ${riderInjuries > 0 ? ` (${riderInjuries} rider)` : ''}
                         </div>
