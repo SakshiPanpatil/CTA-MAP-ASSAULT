@@ -63,6 +63,12 @@ def create_app() -> FastAPI:
         context = {"request": request}
         return templates.TemplateResponse("viz_templates.html", context)
 
+    @app.get("/view-chart", response_class=HTMLResponse)
+    async def view_chart(request: Request) -> HTMLResponse:
+        """Chart Viewer - Display individual templates or saved plots"""
+        context = {"request": request}
+        return templates.TemplateResponse("view_chart.html", context)
+
     @app.get("/assaults.csv")
     async def assaults_csv() -> FileResponse:
         """Serve the cleaned CTA assaults CSV for front-end visualizations."""

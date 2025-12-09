@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTA Assault Chart Viewer</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            --cta-blue: #0066B3;
+            --cta-blue-dark: #004A8F;
+            --cta-red: #C8102E;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0066B3 0%, #004A8F 50%, #C8102E 100%) fixed;
+            background-size: cover;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-light {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn-light:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .controls-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 600px;
+            position: relative;
+        }
+
+        .chart-logo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .chart-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .chart-title-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .info-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-blue-dark));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .info-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 102, 179, 0.4);
+        }
+
+        .plot-description-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .plot-description-modal.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: var(--cta-blue);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            color: var(--cta-red);
+            transform: rotate(90deg);
+        }
+
+        .description-display {
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            line-height: 1.8;
+            color: #2d3748;
+            font-size: 1rem;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 102, 179, 0.95) 0%, rgba(0, 74, 143, 0.95) 50%, rgba(200, 16, 46, 0.95) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px 48px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading-content p {
+            color: var(--cta-blue);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top-color: var(--cta-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1 id="pageTitle">CTA Assault Chart Viewer</h1>
+        <button class="btn btn-light" onclick="goBack()">
+            <i class="bi bi-arrow-left"></i> Back to Gallery
+        </button>
+    </div>
+
+    <div class="container">
+        <div class="controls-bar">
+            <div class="control-group" style="flex: 1; min-width: 200px;">
+                <label>Chart Type</label>
+                <select id="chartType" onchange="renderChart()"></select>
+            </div>
+
+            <div class="control-group">
+                <label>Year Range</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="number" id="yearStart" placeholder="2016" min="2016" max="2025" onchange="applyFilters()">
+                    <input type="number" id="yearEnd" placeholder="2025" min="2016" max="2025" onchange="applyFilters()">
+                </div>
+            </div>
+
+            <button class="btn" style="background: var(--cta-blue); color: white; margin-top: 18px;" onclick="applyFilters()">
+                <i class="bi bi-funnel"></i> Apply Filters
+            </button>
+
+            <button class="btn btn-light" style="margin-top: 18px;" onclick="downloadChart()">
+                <i class="bi bi-download"></i> Download PNG
+            </button>
+
+            <div class="control-group" style="margin-top: 18px;">
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-light" id="toggleBoxBtn" onclick="toggleBoxSelection()" title="Box Select for Comparison">
+                        <i class="bi bi-bounding-box"></i> Box
+                    </button>
+                    <button class="btn btn-light" id="toggleLassoBtn" onclick="toggleLassoSelection()" title="Lasso Select for Comparison">
+                        <i class="bi bi-brush"></i> Lasso
+                    </button>
+                    <button class="btn" style="background: #DC143C; color: white;" onclick="clearSelections()" title="Clear All Selections">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-logo">
+                <img src="{{ url_for('static', path='cta_logo.png') }}" alt="CTA Logo">
+            </div>
+            <div class="chart-title-container">
+                <h2 id="chartTitleText" style="margin: 0; color: var(--cta-blue); font-size: 1.5rem; font-weight: 700;"></h2>
+                <div class="info-icon" onclick="openDescriptionModal()" title="View plot description">
+                    ?
+                </div>
+            </div>
+            <div id="chart"></div>
+        </div>
+    </div>
+
+    <!-- Plot Description Modal -->
+    <div id="descriptionModal" class="plot-description-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Plot Description</h3>
+                <button class="close-modal" onclick="closeDescriptionModal()">&times;</button>
+            </div>
+            <div id="descriptionViewMode">
+                <div class="description-display" id="descriptionDisplay">
+                    No description available for this chart.
+                </div>
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                    <button class="btn" style="background: var(--cta-blue); color: white;" onclick="toggleEditMode()">
+                        <i class="bi bi-pencil"></i> Edit Description
+                    </button>
+                </div>
+            </div>
+            <div id="descriptionEditMode" style="display: none;">
+                <textarea
+                    id="descriptionTextarea"
+                    style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical;"
+                    placeholder="Write your analysis and observations about this chart...&#10;&#10;Example:&#10;- What patterns do you see?&#10;- Why is this data important?&#10;- What actions should be taken?"
+                ></textarea>
+                <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="bi bi-info-circle"></i> Your analysis will be saved locally
+                    </span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-light" onclick="toggleEditMode()">
+                            Cancel
+                        </button>
+                        <button class="btn" style="background: var(--cta-blue); color: white;" onclick="saveDescription()">
+                            <i class="bi bi-check-lg"></i> Save Description
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawData = [];
+        let filteredData = [];
+        let currentTemplate = null;
+
+        // CTA Military-grade color palette (from CTA Risk Assessment Matrix - image.jpg)
+        // These colors match the official CTA safety severity levels
+        const COLOR_PALETTES = {
+            military: [
+                '#DC143C',  // Crimson Red - Catastrophic/Unacceptable
+                '#FF6347',  // Tomato Red - Critical/High Risk
+                '#FF8C00',  // Dark Orange - Critical/Undesirable
+                '#FFA500',  // Orange - Moderate Risk
+                '#FFD700',  // Gold - Marginal/Accept w/ Review
+                '#9ACD32',  // Yellow Green - Low Risk
+                '#228B22',  // Forest Green - Negligible/Acceptable
+                '#0c5ed7',  // Blue - Eliminated
+                '#1990ff',  // Light Blue - Very Low
+                '#708090'   // Slate Gray - Neutral
+            ],
+            severity: ['#228B22', '#9ACD32', '#FFD700', '#FF8C00', '#DC143C'], // Green to Red (severity scale)
+            main: ['#0066B3', '#C8102E', '#FFC857', '#2FBF71', '#7A76FF', '#FF6F61', '#00AFC1', '#E07A5F', '#3D5A80', '#6C5B7B'],
+            categorical: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'],
+            sequential: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
+            diverging: ['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4']
+        };
+
+        // Always use military colors for CTA assault data
+        const COLOR_PALETTE = COLOR_PALETTES.military;
+
+        // Risk-based color bands (low risk → green/blue, high risk → red)
+        const RISK_BANDS = [
+            '#228B22', // Very low - deep green
+            '#9ACD32', // Low - light green
+            '#FFD700', // Medium - gold
+            '#FF8C00', // High - dark orange
+            '#DC143C'  // Very high - crimson red
+        ];
+
+        // Given an array of numeric values, map each one to a risk color based on its relative position in the data.
+        function getRiskColors(values) {
+            if (!values || values.length === 0) return [];
+
+            const nums = values.map(v => {
+                const n = typeof v === 'number' ? v : parseFloat(v);
+                return Number.isFinite(n) ? n : 0;
+            });
+
+            let min = Math.min(...nums);
+            let max = Math.max(...nums);
+
+            if (!Number.isFinite(min) || !Number.isFinite(max)) {
+                return nums.map(() => RISK_BANDS[2]); // Fallback to medium
+            }
+
+            if (min === max) {
+                // All bars have the same value; use medium risk color
+                return nums.map(() => RISK_BANDS[2]);
+            }
+
+            const range = max - min;
+            const t1 = min + range * 0.2;
+            const t2 = min + range * 0.4;
+            const t3 = min + range * 0.6;
+            const t4 = min + range * 0.8;
+
+            return nums.map(v => {
+                if (v <= t1) return RISK_BANDS[0];
+                if (v <= t2) return RISK_BANDS[1];
+                if (v <= t3) return RISK_BANDS[2];
+                if (v <= t4) return RISK_BANDS[3];
+                return RISK_BANDS[4];
+            });
+        }
+
+        // Templates array - same as viz_templates.html
+        const templates = [
+            {
+                id: 1,
+                title: "Assault Trends Over Time",
+                desc: "Yearly assault frequency from 2016 to 2025",
+                x: "Year",
+                y: "count",
+                chartType: "line",
+                dataType: "timeseries",
+                recommended: ["line", "bar", "area"]
+            },
+            {
+                id: 2,
+                title: "Hourly Assault Distribution",
+                desc: "Which hours of the day have most incidents",
+                x: "HourDisplay",
+                y: "count",
+                chartType: "bar",
+                dataType: "sequential",
+                recommended: ["bar", "line", "area"],
+                sortByHour: true
+            },
+            {
+                id: 3,
+                title: "Assault Types Breakdown",
+                desc: "Distribution of different assault event types",
+                x: "Event Type",
+                y: "count",
+                chartType: "pie",
+                dataType: "categorical",
+                recommended: ["pie", "bar", "treemap", "sunburst"]
+            },
+            {
+                id: 4,
+                title: "Location Type Analysis",
+                desc: "Where assaults occur most frequently",
+                x: "Location Type",
+                y: "count",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar", "pie"]
+            },
+            {
+                id: 5,
+                title: "Monthly Assault Patterns",
+                desc: "Seasonal trends throughout the year",
+                x: "Month",
+                y: "count",
+                chartType: "bar",
+                dataType: "sequential",
+                recommended: ["bar", "line"]
+            },
+            {
+                id: 6,
+                title: "Day of Week Distribution",
+                desc: "Which days have highest assault rates",
+                x: "DayOfWeek",
+                y: "count",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar", "pie"]
+            },
+            {
+                id: 7,
+                title: "Weather Impact on Assaults",
+                desc: "How weather conditions correlate with incidents",
+                x: "Weather",
+                y: "count",
+                chartType: "pie",
+                dataType: "categorical",
+                recommended: ["pie", "bar"]
+            },
+            {
+                id: 8,
+                title: "Lighting Conditions Analysis",
+                desc: "Daylight vs dark assault distribution",
+                x: "Lighting",
+                y: "count",
+                chartType: "pie",
+                dataType: "categorical",
+                recommended: ["pie", "bar"]
+            },
+            {
+                id: 9,
+                title: "Victim Type Breakdown",
+                desc: "Operators vs passengers vs other workers",
+                x: "Transit Worker Type",
+                y: "count",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar", "pie"]
+            },
+            {
+                id: 10,
+                title: "Total Injuries by Year",
+                desc: "Sum of all injuries per year",
+                x: "Year",
+                y: "Total Injuries",
+                aggregation: "sum",
+                chartType: "line",
+                dataType: "timeseries",
+                recommended: ["line", "bar", "area"]
+            },
+            {
+                id: 11,
+                title: "Injuries by Location Type",
+                desc: "Which locations result in most injuries",
+                x: "Location Type",
+                y: "Total Injuries",
+                aggregation: "sum",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar"]
+            },
+            {
+                id: 12,
+                title: "Event Category Distribution",
+                desc: "Security vs collision vs other categories",
+                x: "Event Category",
+                y: "count",
+                chartType: "pie",
+                dataType: "categorical",
+                recommended: ["pie", "bar", "sunburst"]
+            },
+            {
+                id: 13,
+                title: "Assault Type by Event Group",
+                desc: "Detailed breakdown of event type groups",
+                x: "Event Type Group",
+                y: "count",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar", "treemap"]
+            },
+            {
+                id: 14,
+                title: "Operator Injuries Over Time",
+                desc: "Transit operator injury trends by year",
+                x: "Year",
+                y: "Transit Vehicle Operator Injuries",
+                aggregation: "sum",
+                chartType: "line",
+                dataType: "timeseries",
+                recommended: ["line", "bar", "area"]
+            },
+            {
+                id: 15,
+                title: "Rider Injuries by Year",
+                desc: "Passenger injury trends over time",
+                x: "Year",
+                y: "Transit Vehicle Rider Injuries",
+                aggregation: "sum",
+                chartType: "line",
+                dataType: "timeseries",
+                recommended: ["line", "bar", "area"]
+            },
+            {
+                id: 16,
+                title: "Hour vs Day of Week Heatmap",
+                desc: "2D heatmap of assault concentration",
+                x: "DayOfWeek",
+                y: "HourDisplay",
+                z: "count",
+                chartType: "heatmap",
+                dataType: "2d-categorical",
+                recommended: ["heatmap"],
+                sortByHour: true
+            },
+            {
+                id: 17,
+                title: "Year-over-Year Comparison",
+                desc: "Comparing assault counts across years",
+                x: "Month",
+                y: "count",
+                color: "Year",
+                chartType: "line",
+                dataType: "multivariate-timeseries",
+                recommended: ["line", "area", "bar"]
+            },
+            {
+                id: 18,
+                title: "Average Injuries per Event Type",
+                desc: "Which assault types cause most injuries",
+                x: "Event Type",
+                y: "Total Injuries",
+                aggregation: "avg",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar"]
+            },
+            {
+                id: 19,
+                title: "Fatalities by Event Type",
+                desc: "Most deadly assault categories",
+                x: "Event Type",
+                y: "Total Fatalities",
+                aggregation: "sum",
+                chartType: "bar",
+                dataType: "categorical",
+                recommended: ["bar"]
+            },
+            {
+                id: 20,
+                title: "Seasonal Assault Distribution",
+                desc: "Quarterly patterns across all years",
+                x: "Quarter",
+                y: "count",
+                chartType: "pie",
+                dataType: "categorical",
+                recommended: ["pie", "bar"]
+            }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
+        // Load CSV data
+        function loadData() {
+            console.log('Starting to load CSV data...');
+            Papa.parse('/assaults.csv', {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    console.log('CSV loaded, parsing data...', results.data.length, 'rows');
+                    rawData = results.data.filter(row => row.Year);
+                    console.log('Filtered data:', rawData.length, 'rows');
+
+                    // Add derived fields
+                    rawData.forEach(row => {
+                        if (row['Event Date']) {
+                            const date = new Date(row['Event Date']);
+                            row['Month'] = date.toLocaleString('default', { month: 'long' });
+                            row['DayOfWeek'] = date.toLocaleString('default', { weekday: 'long' });
+                            const quarter = Math.floor(date.getMonth() / 3) + 1;
+                            row['Quarter'] = `Q${quarter}`;
+                        }
+                        if (row['Event Time']) {
+                            const timeStr = row['Event Time'].toLowerCase();
+                            const parts = timeStr.split(':');
+                            let hour = parseInt(parts[0]);
+
+                            const isPM = timeStr.includes('pm');
+                            const isAM = timeStr.includes('am');
+
+                            if (isPM && hour !== 12) {
+                                hour += 12;
+                            } else if (isAM && hour === 12) {
+                                hour = 0;
+                            }
+
+                            row['Hour'] = hour;
+
+                            let displayHour = hour;
+                            let period = 'AM';
+
+                            if (hour === 0) {
+                                displayHour = 12;
+                                period = 'AM';
+                            } else if (hour === 12) {
+                                displayHour = 12;
+                                period = 'PM';
+                            } else if (hour > 12) {
+                                displayHour = hour - 12;
+                                period = 'PM';
+                            }
+
+                            row['HourDisplay'] = `${displayHour} ${period}`;
+                        }
+                    });
+
+                    filteredData = [...rawData];
+                    console.log('About to load from URL params...');
+                    loadFromURLParams();
+                    console.log('Hiding loading screen...');
+                    document.getElementById('loading').style.display = 'none';
+                },
+                error: function(error) {
+                    console.error('Error loading CSV:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    alert('Failed to load assault data. Please check the console for details.');
+                }
+            });
+        }
+
+        // Load template or saved plot from URL parameters
+        function loadFromURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const mode = params.get('mode');
+            const id = params.get('id');
+
+            console.log('loadFromURLParams called:', { mode, id });
+
+            if (mode === 'template' && id) {
+                loadTemplate(parseInt(id), params);
+            } else if (mode === 'saved') {
+                loadSavedPlot(params);
+            } else {
+                console.warn('No valid mode or id found in URL');
+            }
+        }
+
+        function loadTemplate(id, params) {
+            console.log('loadTemplate called with id:', id);
+            currentTemplate = templates.find(t => t.id === id);
+            if (!currentTemplate) {
+                console.error('Template not found:', id);
+                return;
+            }
+
+            console.log('Template found:', currentTemplate);
+
+            document.getElementById('chartTitleText').textContent = currentTemplate.title;
+            document.getElementById('descriptionDisplay').textContent = currentTemplate.desc || 'No description available.';
+
+            populateChartTypes();
+            // Set to first recommended chart type (usually the best one for this data)
+            const validTypes = getValidChartTypes(currentTemplate);
+            const defaultType = currentTemplate.recommended && currentTemplate.recommended.length > 0
+                ? currentTemplate.recommended[0]
+                : currentTemplate.chartType;
+            document.getElementById('chartType').value = validTypes.includes(defaultType) ? defaultType : validTypes[0];
+
+            console.log('About to call applyFilters...');
+            applyFilters();
+        }
+
+        function loadSavedPlot(params) {
+            // Helper to properly parse null/undefined values from URL params
+            const getParam = (key) => {
+                const value = params.get(key);
+                if (!value || value === 'null' || value === 'undefined') return null;
+                return value;
+            };
+
+            currentTemplate = {
+                id: params.get('id'),
+                title: params.get('title') || 'Custom Plot',
+                desc: params.get('desc') || '',
+                x: params.get('x'),
+                y: params.get('y'),
+                chartType: params.get('chartType') || 'bar',
+                dataType: params.get('dataType') || 'categorical',
+                aggregation: params.get('aggregation') || 'count',
+                color: getParam('color'),  // Properly handle null
+                z: getParam('z'),          // Properly handle null
+                recommended: params.get('recommended') ? params.get('recommended').split(',') : ['bar', 'line', 'pie'],
+                sortByHour: params.get('sortByHour') === 'true'
+            };
+
+            console.log('🔍 [Params called]', Object.fromEntries(params));
+            console.log('🎯 [Template loaded]', currentTemplate);
+            console.log('📊 [Color field]', currentTemplate.color === null ? 'NULL - No grouping' : `"${currentTemplate.color}" - WILL GROUP!`);
+
+            document.getElementById('chartTitleText').textContent = currentTemplate.title;
+            document.getElementById('descriptionDisplay').textContent = currentTemplate.desc || 'No description available.';
+
+            // Restore year filters (default to saved values, but allow user to change)
+            const yearStart = params.get('yearStart');
+            const yearEnd = params.get('yearEnd');
+            if (yearStart) document.getElementById('yearStart').value = yearStart;
+            if (yearEnd) document.getElementById('yearEnd').value = yearEnd;
+
+            populateChartTypes();
+            document.getElementById('chartType').value = currentTemplate.chartType;
+
+            applyFilters();
+        }
+
+        function populateChartTypes() {
+            const chartTypeSelect = document.getElementById('chartType');
+            const allChartTypes = [
+                { value: 'bar', label: 'Bar Chart' },
+                { value: 'line', label: 'Line Chart' },
+                { value: 'pie', label: 'Pie Chart' },
+                { value: 'scatter', label: 'Scatter Plot' },
+                { value: 'heatmap', label: 'Heatmap' },
+                { value: 'area', label: 'Area Chart' },
+                { value: 'box', label: 'Box Plot' },
+                { value: 'sunburst', label: 'Sunburst' },
+                { value: 'treemap', label: 'Treemap' }
+            ];
+
+            const validChartTypes = getValidChartTypes(currentTemplate);
+            const allowedCharts = allChartTypes.filter(ct => validChartTypes.includes(ct.value));
+
+            chartTypeSelect.innerHTML = allowedCharts
+                .map(ct => `<option value="${ct.value}">${ct.label}</option>`)
+                .join('');
+        }
+
+        function getValidChartTypes(template) {
+            const valid = [];
+
+            if (template.z && template.y) {
+                valid.push('heatmap');
+                return valid;
+            }
+
+            if (template.color) {
+                valid.push('line', 'area', 'bar', 'scatter');
+                return valid;
+            }
+
+            valid.push('bar', 'line', 'pie', 'area', 'scatter', 'treemap', 'sunburst');
+
+            if (template.dataType === 'categorical' || template.dataType === 'sequential') {
+                valid.push('box');
+            }
+
+            return valid;
+        }
+
+        function applyFilters() {
+            console.log('applyFilters called');
+            const yearStart = document.getElementById('yearStart').value;
+            const yearEnd = document.getElementById('yearEnd').value;
+
+            filteredData = rawData.filter(row => {
+                if (yearStart && parseInt(row.Year) < parseInt(yearStart)) return false;
+                if (yearEnd && parseInt(row.Year) > parseInt(yearEnd)) return false;
+                return true;
+            });
+
+            console.log('Filtered data length:', filteredData.length);
+            renderChart();
+        }
+
+        function renderChart() {
+            console.log('renderChart called, currentTemplate:', currentTemplate);
+            if (!currentTemplate) {
+                console.error('No currentTemplate set!');
+                return;
+            }
+
+            const chartType = document.getElementById('chartType').value;
+            console.log('Chart type:', chartType);
+
+            // Aggregate data
+            const aggregated = aggregateData(
+                filteredData,
+                currentTemplate.x,
+                currentTemplate.y,
+                currentTemplate.aggregation || 'count',
+                currentTemplate.color,
+                currentTemplate.z
+            );
+
+            console.log('Aggregated data:', aggregated.length, 'points');
+
+            // Generate chart
+            generateChart(chartType, aggregated, currentTemplate);
+        }
+
+        // Copy aggregateData function from viz_templates.html
+        function aggregateData(data, xField, yField, aggregation, colorField, zField) {
+            console.log('🔧 [aggregateData called]', { xField, yField, aggregation, colorField, zField, dataRows: data.length });
+
+            const grouped = {};
+
+            data.forEach(row => {
+                const xKey = row[xField] || 'Unknown';
+                const colorKey = colorField ? (row[colorField] || 'Unknown') : 'All';
+                // yKey should ONLY be used for heatmaps (when zField exists), NOT for regular charts!
+                const yKey = zField ? (row[yField] || 'Unknown') : '';
+                const key = `${xKey}|||${colorKey}|||${yKey}`;
+
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        x: xKey,
+                        y: zField ? yKey : undefined,
+                        color: colorKey,
+                        values: [],
+                        hourValue: row['Hour'] !== undefined ? row['Hour'] : null
+                    };
+                }
+
+                if (zField || aggregation === 'count') {
+                    grouped[key].values.push(1);
+                } else {
+                    const val = parseFloat(row[yField]) || 0;
+                    grouped[key].values.push(val);
+                }
+            });
+
+            Object.keys(grouped).forEach(key => {
+                const values = grouped[key].values;
+                if (aggregation === 'count' || aggregation === 'sum') {
+                    grouped[key].z = values.reduce((a, b) => a + b, 0);
+                } else if (aggregation === 'avg') {
+                    grouped[key].z = values.reduce((a, b) => a + b, 0) / values.length;
+                }
+            });
+
+            const result = Object.values(grouped);
+            console.log('📈 [aggregateData result]', result.length, 'groups created');
+            console.log('📋 [First 5 groups]', result.slice(0, 5));
+            if (result.length > 15) {
+                console.warn('⚠️ TOO MANY GROUPS! Expected ~11-12 for years, got', result.length);
+                console.log('🔍 [Sample keys]', Object.keys(grouped).slice(0, 10));
+            }
+            return result;
+        }
+
+        // Copy sortByHourValue and generateChart from viz_templates.html
+        function sortByHourValue(data, xField, yField) {
+            const hourField = xField === 'HourDisplay' ? 'x' : (yField === 'HourDisplay' ? 'y' : null);
+            if (!hourField) return data;
+
+            return data.sort((a, b) => {
+                const hourA = a.hourValue !== null ? a.hourValue : 0;
+                const hourB = b.hourValue !== null ? b.hourValue : 0;
+                return hourA - hourB;
+            });
+        }
+
+        // Full generateChart function - copied from viz_templates.html
+        function generateChart(type, data, template) {
+            if (type === 'heatmap' && !template.z) {
+                console.warn('Heatmap requires both X and Y dimensions; falling back to bar chart for this template.');
+                type = 'bar';
+            }
+
+            if (template.sortByHour) {
+                data = sortByHourValue(data, template.x, template.y);
+            }
+
+            const layout = {
+                // Keep title only in the page header (h2), not inside the Plotly canvas
+                title: {
+                    text: '',
+                    font: {
+                        size: 22,
+                        family: 'Inter, sans-serif',
+                        weight: 700,
+                        color: '#1a202c'
+                    },
+                    x: 0.05,
+                    xanchor: 'left'
+                },
+                height: 650,
+                // Reduce top margin now that Plotly title is hidden
+                margin: { t: 40, r: 120, b: 100, l: 80 },
+                showlegend: true,
+                legend: {
+                    orientation: 'v',
+                    x: 1.02,
+                    y: 1,
+                    xanchor: 'left',
+                    yanchor: 'top',
+                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    bordercolor: '#e2e8f0',
+                    borderwidth: 1,
+                    font: {
+                        size: 12,
+                        family: 'Inter, sans-serif',
+                        color: '#2d3748'
+                    }
+                },
+                hovermode: 'closest',
+                hoverlabel: {
+                    bgcolor: 'white',
+                    bordercolor: '#e2e8f0',
+                    font: {
+                        family: 'Inter, sans-serif',
+                        size: 13,
+                        color: '#1a202c'
+                    }
+                },
+                plot_bgcolor: '#fafbfc',
+                paper_bgcolor: 'white',
+                transition: {
+                    duration: 500,
+                    easing: 'cubic-in-out'
+                }
+            };
+
+            let traces = [];
+
+            const getYLabel = () => {
+                if (template.aggregation === 'sum') return `Total ${template.y}`;
+                if (template.aggregation === 'avg') return `Average ${template.y}`;
+                return 'Count';
+            };
+
+            if (type === 'pie') {
+                const pieValues = data.map(d => d.z);
+
+                traces = [{
+                    labels: data.map(d => d.x),
+                    values: pieValues,
+                    type: 'pie',
+                    textposition: 'auto',
+                    textinfo: 'label+percent',
+                    hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
+                    marker: {
+                        colors: COLOR_PALETTE,
+                        line: {
+                            color: 'white',
+                            width: 3
+                        }
+                    },
+                    textfont: {
+                        size: 13,
+                        family: 'Inter, sans-serif',
+                        color: 'white'
+                    },
+                    pull: data.map((d, i) => i === 0 ? 0.05 : 0),
+                    hole: 0.3,
+                    rotation: 45,
+                    selected: {
+                        marker: {
+                            opacity: 1,
+                            line: { color: '#C8102E', width: 4 }
+                        }
+                    },
+                    unselected: {
+                        marker: {
+                            opacity: 0.3
+                        }
+                    }
+                }];
+                layout.showlegend = true;
+                layout.legend = {
+                    ...layout.legend,
+                    orientation: 'h',
+                    x: 0.5,
+                    y: -0.15,
+                    xanchor: 'center',
+                    yanchor: 'top'
+                };
+                layout.annotations = [{
+                    text: 'Total<br>' + data.reduce((sum, d) => sum + d.z, 0),
+                    x: 0.5,
+                    y: 0.5,
+                    font: { size: 18, family: 'Inter, sans-serif', color: '#2d3748', weight: 700 },
+                    showarrow: false
+                }];
+            } else if (type === 'sunburst' || type === 'treemap') {
+                const labels = ['Total', ...data.map(d => d.x)];
+                const parents = ['', ...data.map(() => 'Total')];
+                const values = [data.reduce((sum, d) => sum + d.z, 0), ...data.map(d => d.z)];
+
+                traces = [{
+                    labels: labels,
+                    parents: parents,
+                    values: values,
+                    type: type,
+                    textposition: 'inside',
+                    textinfo: 'label+percent parent',
+                    hovertemplate: '<b>%{label}</b><br><b>Count: %{value}</b><br>Percentage: %{percentParent}<extra></extra>',
+                    marker: {
+                        colors: ['rgba(255,255,255,0)', ...COLOR_PALETTE.slice(0, data.length)],
+                        line: { width: 3, color: 'white' }
+                    },
+                    textfont: {
+                        size: 13,
+                        family: 'Inter, sans-serif',
+                        color: 'white'
+                    },
+                    branchvalues: 'total',
+                    pathbar: {
+                        visible: true,
+                        thickness: 20,
+                        textfont: { size: 12, family: 'Inter, sans-serif' }
+                    }
+                }];
+                layout.showlegend = false;
+            } else if (template.color && type !== 'pie') {
+                const colorGroups = [...new Set(data.map(d => d.color))];
+                const groupTraces = colorGroups.map((group, idx) => {
+                    const groupData = data.filter(d => d.color === group);
+                    const traceType =
+                        type === 'bar' ? 'bar'
+                        : (type === 'line' || type === 'area' || type === 'scatter') ? 'scatter'
+                        : type;
+                    const mode = (type === 'line' || type === 'area') ? 'lines+markers' : (type === 'scatter' ? 'markers' : undefined);
+                    const fill = type === 'area' ? 'tozeroy' : undefined;
+                    const yValues = groupData.map(d => d.z);
+                    const riskColors = (type === 'bar') ? getRiskColors(yValues) : null;
+
+                    return {
+                        x: groupData.map(d => d.x),
+                        y: groupData.map(d => d.z),
+                        name: group,
+                        type: traceType,
+                        mode,
+                        fill,
+                        hovertemplate: `${template.x}: %{x}<br>${getYLabel()}: %{y}<br>${template.color}: ${group}<extra></extra>`,
+                        marker: (type === 'scatter' || type === 'line' || type === 'area')
+                            ? { color: COLOR_PALETTE[idx % COLOR_PALETTE.length], size: 8 }
+                            : {
+                                color: riskColors || COLOR_PALETTE[idx % COLOR_PALETTE.length],
+                                line: { color: 'white', width: 1 },
+                                opacity: 0.95
+                        },
+                        line: (type === 'line' || type === 'area')
+                            ? { color: COLOR_PALETTE[idx % COLOR_PALETTE.length], width: 3 }
+                            : undefined,
+                        selected: {
+                            marker: {
+                                opacity: 1,
+                                line: { color: '#C8102E', width: 3 }
+                            }
+                        },
+                        unselected: {
+                            marker: {
+                                opacity: 0.7
+                            }
+                        }
+                    };
+                });
+                // Add % of total for legend names
+                const allValues = data.map(d => d.z);
+                const total = allValues.reduce((sum, v) => sum + (typeof v === 'number' ? v : parseFloat(v) || 0), 0) || 0;
+                traces = groupTraces.map((trace, idx) => {
+                    if (!total || !Array.isArray(trace.y)) return trace;
+                    const groupSum = trace.y.reduce((sum, v) => sum + (typeof v === 'number' ? v : parseFloat(v) || 0), 0);
+                    const pct = total ? (groupSum / total) * 100 : 0;
+                    return {
+                        ...trace,
+                        name: `${trace.name} (${pct.toFixed(1)}%)`
+                    };
+                });
+                layout.xaxis = {
+                    title: {
+                        text: template.x,
+                        font: { size: 14, family: 'Inter, sans-serif' }
+                    },
+                    gridcolor: '#e2e8f0'
+                };
+                layout.yaxis = {
+                    title: {
+                        text: getYLabel(),
+                        font: { size: 14, family: 'Inter, sans-serif' }
+                    },
+                    gridcolor: '#e2e8f0'
+                };
+                layout.showlegend = true;
+            } else {
+                const traceType =
+                    type === 'bar' ? 'bar'
+                    : (type === 'line' || type === 'area' || type === 'scatter') ? 'scatter'
+                    : type;
+                const mode = (type === 'line' || type === 'area') ? 'lines+markers' : (type === 'scatter' ? 'markers' : undefined);
+                const fill = type === 'area' ? 'tozeroy' : undefined;
+
+                // Risk-based color mapping: higher values → warmer (yellow/orange/red), lower → greener
+                const yValues = data.map(d => d.z);
+                const barColors = type === 'bar'
+                    ? getRiskColors(yValues)
+                    : COLOR_PALETTE[0];
+
+                traces = [{
+                    x: data.map(d => d.x),
+                    y: data.map(d => d.z),
+                    type: traceType,
+                    mode,
+                    fill,
+                    marker: {
+                        color: (type === 'scatter') ? data.map((d, i) => COLOR_PALETTE[i % COLOR_PALETTE.length]) : barColors,
+                        size: (type === 'scatter' || type === 'line' || type === 'area') ? 10 : undefined,
+                        line: type === 'bar' ? {
+                            color: 'white',
+                            width: 1
+                        } : undefined,
+                        opacity: (type === 'bar') ? 1.0 : 0.85
+                    },
+                    line: (type === 'line' || type === 'area') ? {
+                        color: COLOR_PALETTE[0],
+                        width: 4,
+                        shape: 'spline',
+                        smoothing: 1.3
+                    } : undefined,
+                    fillcolor: type === 'area' ? `rgba(${parseInt(COLOR_PALETTE[0].slice(1,3), 16)}, ${parseInt(COLOR_PALETTE[0].slice(3,5), 16)}, ${parseInt(COLOR_PALETTE[0].slice(5,7), 16)}, 0.3)` : undefined,
+                    hovertemplate: `<b>${template.x}: %{x}</b><br>${getYLabel()}: <b>%{y}</b><extra></extra>`,
+                    showlegend: false,
+                    selected: type === 'bar' ? {
+                        marker: {
+                            opacity: 1,
+                            line: { color: '#C8102E', width: 3 }
+                        }
+                    } : undefined,
+                    unselected: type === 'bar' ? {
+                        marker: {
+                            opacity: 0.7
+                        }
+                    } : undefined
+                }];
+                layout.xaxis = {
+                    title: {
+                        text: template.x,
+                        font: { size: 14, family: 'Inter, sans-serif' }
+                    },
+                    gridcolor: '#e2e8f0'
+                };
+                layout.yaxis = {
+                    title: {
+                        text: getYLabel(),
+                        font: { size: 14, family: 'Inter, sans-serif' }
+                    },
+                    gridcolor: '#e2e8f0'
+                };
+                // Show legend with single trace showing chart info
+                layout.showlegend = true;
+                traces[0].name = `${template.x} vs ${getYLabel()}`;
+            }
+
+            if (layout.xaxis) {
+                layout.xaxis = {
+                    ...layout.xaxis,
+                    showgrid: true,
+                    gridcolor: '#e2e8f0',
+                    gridwidth: 1,
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#cbd5e0',
+                    linewidth: 2,
+                    tickfont: { size: 12, family: 'Inter, sans-serif', color: '#4a5568' }
+                };
+            }
+            if (layout.yaxis) {
+                layout.yaxis = {
+                    ...layout.yaxis,
+                    showgrid: true,
+                    gridcolor: '#e2e8f0',
+                    gridwidth: 1,
+                    zeroline: false,
+                    showline: true,
+                    linecolor: '#cbd5e0',
+                    linewidth: 2,
+                    tickfont: { size: 12, family: 'Inter, sans-serif', color: '#4a5568' }
+                };
+            }
+
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                // Simplify toolbar: keep camera, pan, reset; use our own zoom + compare controls
+                modeBarButtonsToRemove: [
+                    'zoom2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'select2d',
+                    'lasso2d',
+                    'hoverClosestCartesian',
+                    'hoverCompareCartesian',
+                    'toggleSpikelines'
+                ],
+                modeBarButtonsToAdd: [
+                    {
+                        name: 'Zoom In',
+                        icon: {
+                            width: 1792,
+                            height: 1792,
+                            path: 'M1664 960v-256q0 -26 -19 -45t-45 -19h-384v-384q0 -26 -19 -45t-45 -19h-256q-26 0 -45 19t-19 45v384h-384q-26 0 -45 19t-19 45v256q0 26 19 45t45 19h384v384q0 26 19 45t45 19h256q26 0 45 -19t19 -45v-384h384q26 0 45 -19t19 -45z',
+                            transform: 'matrix(1 0 0 -1 0 1792)'
+                        },
+                        click: function(gd) {
+                            const layout = gd.layout;
+                            const xRange = layout.xaxis.range;
+                            const yRange = layout.yaxis.range;
+                            const xCenter = (xRange[0] + xRange[1]) / 2;
+                            const yCenter = (yRange[0] + yRange[1]) / 2;
+                            const xZoom = (xRange[1] - xRange[0]) * 0.4;
+                            const yZoom = (yRange[1] - yRange[0]) * 0.4;
+                            Plotly.relayout(gd, {
+                                'xaxis.range': [xCenter - xZoom, xCenter + xZoom],
+                                'yaxis.range': [yCenter - yZoom, yCenter + yZoom]
+                            });
+                        }
+                    },
+                    {
+                        name: 'Zoom Out',
+                        icon: {
+                            width: 1792,
+                            height: 1792,
+                            path: 'M1664 960v-256q0 -26 -19 -45t-45 -19h-896q-26 0 -45 19t-19 45v256q0 26 19 45t45 19h896q26 0 45 -19t19 -45z',
+                            transform: 'matrix(1 0 0 -1 0 1792)'
+                        },
+                        click: function(gd) {
+                            const layout = gd.layout;
+                            const xRange = layout.xaxis.range;
+                            const yRange = layout.yaxis.range;
+                            const xCenter = (xRange[0] + xRange[1]) / 2;
+                            const yCenter = (yRange[0] + yRange[1]) / 2;
+                            const xZoom = (xRange[1] - xRange[0]) * 1.25;
+                            const yZoom = (yRange[1] - yRange[0]) * 1.25;
+                            Plotly.relayout(gd, {
+                                'xaxis.range': [xCenter - xZoom, xCenter + xZoom],
+                                'yaxis.range': [yCenter - yZoom, yCenter + yZoom]
+                            });
+                        }
+                    },
+                    {
+                        name: 'Toggle Spike Lines',
+                        icon: Plotly.Icons.drawline,
+                        click: function(gd) {
+                            const update = {
+                                'xaxis.showspikes': !gd.layout.xaxis.showspikes,
+                                'yaxis.showspikes': !gd.layout.yaxis.showspikes,
+                                'xaxis.spikemode': 'across',
+                                'yaxis.spikemode': 'across',
+                                'xaxis.spikethickness': 2,
+                                'yaxis.spikethickness': 2,
+                                'xaxis.spikecolor': '#DC143C',
+                                'yaxis.spikecolor': '#DC143C',
+                                'xaxis.spikedash': 'solid',
+                                'yaxis.spikedash': 'solid'
+                            };
+                            Plotly.relayout(gd, update);
+                        }
+                    }
+                ],
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: template.title.toLowerCase().replace(/\s+/g, '_'),
+                    height: 800,
+                    width: 1200,
+                    scale: 2
+                },
+                scrollZoom: false,  // DISABLE scroll zoom (2-finger scroll issue)
+                doubleClick: 'reset',  // Double-click to reset zoom
+                showTips: true
+            };
+
+            // Add smooth animation on render
+            Plotly.newPlot('chart', traces, layout, config).then(() => {
+                console.log('Chart rendered successfully');
+
+                // Add hover interactions
+                const chartElement = document.getElementById('chart');
+
+                // Reset legend click handlers on every re-render so behavior matches the current chart type
+                if (chartElement.removeAllListeners) {
+                    chartElement.removeAllListeners('plotly_legendclick');
+                }
+
+                chartElement.on('plotly_hover', function(data) {
+                    chartElement.style.cursor = 'crosshair';
+                    const point = data.points && data.points[0];
+                    if (!point) return;
+
+                    const gd = chartElement;
+                    const traceIndex = point.curveNumber;
+                    const pointIndex = point.pointIndex;
+
+                    const trace = gd.data && gd.data[traceIndex];
+                    if (!trace) return;
+
+                    // Use Plotly's selected/unselected styling for all trace types
+                    Plotly.restyle(gd, { selectedpoints: [[pointIndex]] }, [traceIndex]);
+                });
+
+                chartElement.on('plotly_unhover', function(data) {
+                    chartElement.style.cursor = '';
+                    const point = data.points && data.points[0];
+                    if (!point) return;
+
+                    const gd = chartElement;
+                    const traceIndex = point.curveNumber;
+
+                    const trace = gd.data && gd.data[traceIndex];
+                    if (!trace) return;
+
+                    // Clear explode highlight when leaving any trace
+                    Plotly.restyle(gd, { selectedpoints: [null] }, [traceIndex]);
+                });
+
+                // Legend click: focus on one series (explode it) and gray out the rest (bar charts only)
+                const hasBarTrace = (chartElement.data || []).some(t => t.type === 'bar');
+                if (hasBarTrace) {
+                    chartElement.on('plotly_legendclick', function(eventData) {
+                    const traceIndex = eventData.curveNumber;
+                    const gd = chartElement;
+                    const trace = gd.data && gd.data[traceIndex];
+
+                    if (!trace || trace.type !== 'bar') {
+                        // Let Plotly handle default behavior for non-bar traces
+                        return true;
+                    }
+
+                    // First time: capture original marker styles for all traces
+                    if (!legendOriginalMarkers) {
+                        legendOriginalMarkers = (gd.data || []).map(t => {
+                            const m = t.marker || {};
+                            return {
+                                color: m.color !== undefined ? JSON.parse(JSON.stringify(m.color)) : undefined,
+                                opacity: m.opacity,
+                                line: m.line ? { ...m.line } : undefined
+                            };
+                        });
+                    }
+
+                    // If clicking the already-focused trace, restore everything
+                    if (legendFocusedTrace === traceIndex) {
+                        (gd.data || []).forEach((t, i) => {
+                            const original = legendOriginalMarkers[i] || {};
+                            const line = original.line || {};
+                            const opacity = typeof original.opacity === 'number'
+                                ? original.opacity
+                                : (t.marker && typeof t.marker.opacity === 'number' ? t.marker.opacity : 0.95);
+
+                            const update = {};
+                            if (original.color !== undefined) update['marker.color'] = [original.color];
+                            update['marker.opacity'] = [opacity];
+                            update['marker.line.width'] = [line.width !== undefined ? line.width : (t.marker && t.marker.line && t.marker.line.width !== undefined ? t.marker.line.width : 1)];
+                            update['marker.line.color'] = [line.color || (t.marker && t.marker.line && t.marker.line.color) || 'white'];
+
+                            Plotly.restyle(gd, update, [i]);
+                        });
+
+                        legendFocusedTrace = null;
+                        // Keep legend item visible
+                        return false;
+                    }
+
+                    // Otherwise, focus this trace and gray out the rest
+                    (gd.data || []).forEach((t, i) => {
+                        if (!t.marker) t.marker = {};
+                        if (i === traceIndex) {
+                            // Explode focused series
+                            Plotly.restyle(gd, {
+                                'marker.opacity': [1],
+                                'marker.line.width': [3],
+                                'marker.line.color': ['#C8102E']
+                            }, [i]);
+                        } else {
+                            // Dim other series to gray
+                            Plotly.restyle(gd, {
+                                'marker.color': ['#d3d3d3'],
+                                'marker.opacity': [0.2],
+                                'marker.line.width': [0.5],
+                                'marker.line.color': ['#e2e8f0']
+                            }, [i]);
+                        }
+                    });
+
+                        legendFocusedTrace = traceIndex;
+
+                        // Prevent default hide/show behavior
+                        return false;
+                    });
+                }
+
+                // Add selection event handlers for comparison
+                chartElement.on('plotly_selected', function(eventData) {
+                    handleSelection(eventData);
+                });
+
+                // Animate chart entrance
+                Plotly.animate('chart', {
+                    data: traces.map(trace => ({...trace})),
+                    traces: Array.from({length: traces.length}, (_, i) => i),
+                    layout: layout
+                }, {
+                    transition: {
+                        duration: 1000,
+                        easing: 'cubic-in-out'
+                    },
+                    frame: {
+                        duration: 1000,
+                        redraw: true
+                    }
+                });
+            }).catch((error) => {
+                console.error('Plotly rendering error:', error);
+            });
+        }
+
+        // Global variables for selection management
+        let selectionMode = null; // 'box' or 'lasso'
+        let selections = []; // Array to store multiple selections for comparison
+        let comparisonTraceIndices = []; // Track extra comparison traces added to the chart
+
+        // Legend focus state: when a legend item is clicked, explode that series and gray out the rest
+        let legendFocusedTrace = null;      // index of the currently focused trace, or null
+        let legendOriginalMarkers = null;   // snapshot of original marker styles for all traces
+
+        // Zoom functions
+        function zoomIn() {
+            const chart = document.getElementById('chart');
+            const layout = chart.layout;
+
+            const xRange = layout.xaxis.range || [layout.xaxis.autorange ? 0 : layout.xaxis.range[0], layout.xaxis.autorange ? 1 : layout.xaxis.range[1]];
+            const yRange = layout.yaxis.range || [layout.yaxis.autorange ? 0 : layout.yaxis.range[0], layout.yaxis.autorange ? 1 : layout.yaxis.range[1]];
+
+            const xMid = (xRange[0] + xRange[1]) / 2;
+            const yMid = (yRange[0] + yRange[1]) / 2;
+            const xDelta = (xRange[1] - xRange[0]) * 0.3; // Zoom in by 30%
+            const yDelta = (yRange[1] - yRange[0]) * 0.3;
+
+            Plotly.relayout(chart, {
+                'xaxis.range': [xMid - xDelta, xMid + xDelta],
+                'yaxis.range': [yMid - yDelta, yMid + yDelta]
+            });
+        }
+
+        function zoomOut() {
+            const chart = document.getElementById('chart');
+            const layout = chart.layout;
+
+            const xRange = layout.xaxis.range || [0, 1];
+            const yRange = layout.yaxis.range || [0, 1];
+
+            const xMid = (xRange[0] + xRange[1]) / 2;
+            const yMid = (yRange[0] + yRange[1]) / 2;
+            const xDelta = (xRange[1] - xRange[0]) * 0.8; // Zoom out by 60%
+            const yDelta = (yRange[1] - yRange[0]) * 0.8;
+
+            Plotly.relayout(chart, {
+                'xaxis.range': [xMid - xDelta, xMid + xDelta],
+                'yaxis.range': [yMid - yDelta, yMid + yDelta]
+            });
+        }
+
+        function resetZoom() {
+            const chart = document.getElementById('chart');
+            Plotly.relayout(chart, {
+                'xaxis.autorange': true,
+                'yaxis.autorange': true
+            });
+        }
+
+        // Selection toggle functions
+        function toggleBoxSelection() {
+            const chart = document.getElementById('chart');
+            const btn = document.getElementById('toggleBoxBtn');
+
+            if (selectionMode === 'box') {
+                // Turn off
+                selectionMode = null;
+                btn.style.background = '';
+                btn.style.color = '';
+                Plotly.relayout(chart, {'dragmode': 'zoom'});
+            } else {
+                // Turn on
+                selectionMode = 'box';
+                btn.style.background = '#FFD700';
+                btn.style.color = '#000';
+
+                // Turn off lasso if active
+                const lassoBtn = document.getElementById('toggleLassoBtn');
+                lassoBtn.style.background = '';
+                lassoBtn.style.color = '';
+
+                Plotly.relayout(chart, {'dragmode': 'select'});
+            }
+        }
+
+        function toggleLassoSelection() {
+            const chart = document.getElementById('chart');
+            const btn = document.getElementById('toggleLassoBtn');
+
+            if (selectionMode === 'lasso') {
+                // Turn off
+                selectionMode = null;
+                btn.style.background = '';
+                btn.style.color = '';
+                Plotly.relayout(chart, {'dragmode': 'zoom'});
+            } else {
+                // Turn on
+                selectionMode = 'lasso';
+                btn.style.background = '#FFD700';
+                btn.style.color = '#000';
+
+                // Turn off box if active
+                const boxBtn = document.getElementById('toggleBoxBtn');
+                boxBtn.style.background = '';
+                boxBtn.style.color = '';
+
+                Plotly.relayout(chart, {'dragmode': 'lasso'});
+            }
+        }
+
+        function handleSelection(eventData) {
+            if (!eventData || !eventData.points || eventData.points.length === 0) {
+                return;
+            }
+
+            console.log('Selection made:', eventData.points.length, 'points');
+
+            // Store the selection
+            const selectionInfo = {
+                points: eventData.points,
+                color: selections.length === 0 ? '#DC143C' : (selections.length === 1 ? '#FF8C00' : '#FFD700'),
+                label: `Selection ${selections.length + 1}`
+            };
+
+            selections.push(selectionInfo);
+
+            // Highlight the selected points
+            highlightSelections();
+
+            // Build visual comparison trace on the chart (bar charts only)
+            createComparisonTrace(selectionInfo);
+        }
+
+        // Create a separate comparison trace so selections can be visually compared side-by-side
+        function createComparisonTrace(selectionInfo) {
+            const chart = document.getElementById('chart');
+            if (!chart || !selectionInfo.points || selectionInfo.points.length === 0) return;
+
+            const basePoint = selectionInfo.points[0];
+            const traceIndex = basePoint.curveNumber;
+            const baseTrace = chart.data && chart.data[traceIndex];
+            if (!baseTrace || baseTrace.type !== 'bar') {
+                // Only create comparison traces for bar charts
+                return;
+            }
+
+            const xVals = [];
+            const yVals = [];
+
+            selectionInfo.points.forEach(p => {
+                xVals.push(p.x);
+                yVals.push(p.y);
+            });
+
+            // Ensure grouped bar mode so comparison bars appear side-by-side
+            const newLayout = { barmode: 'group' };
+
+            const compTrace = {
+                x: xVals,
+                y: yVals,
+                type: 'bar',
+                name: selectionInfo.label,
+                marker: {
+                    color: selectionInfo.color,
+                    opacity: 0.8,
+                    line: { color: '#1a202c', width: 1.2 }
+                },
+                hovertemplate: baseTrace.hovertemplate || '<b>%{x}</b><br>%{y}<extra></extra>',
+                showlegend: true
+            };
+
+            Plotly.react(chart, chart.data, { ...chart.layout, ...newLayout }).then(() => {
+                Plotly.addTraces(chart, compTrace).then(() => {
+                    comparisonTraceIndices.push(chart.data.length - 1);
+                });
+            });
+        }
+
+        function highlightSelections() {
+            const chart = document.getElementById('chart');
+            const currentData = chart.data;
+
+            // Create comparison info text
+            let comparisonText = '<div style="position: absolute; top: 80px; right: 20px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; max-width: 300px;">';
+            comparisonText += '<h4 style="margin: 0 0 12px 0; color: var(--cta-blue); font-size: 1rem;">Comparison Selections</h4>';
+
+            selections.forEach((sel, idx) => {
+                const avgValue = sel.points.reduce((sum, p) => sum + (p.y || 0), 0) / sel.points.length;
+                comparisonText += `
+                    <div style="margin-bottom: 8px; padding: 8px; background: ${sel.color}22; border-left: 4px solid ${sel.color}; border-radius: 4px;">
+                        <strong style="color: ${sel.color};">${sel.label}</strong><br>
+                        <span style="font-size: 0.85rem;">Points: ${sel.points.length}</span><br>
+                        <span style="font-size: 0.85rem;">Avg: ${avgValue.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+
+            comparisonText += '</div>';
+
+            // Remove old comparison box if exists
+            const oldBox = document.querySelector('.comparison-box');
+            if (oldBox) oldBox.remove();
+
+            // Add new comparison box
+            const chartContainer = document.querySelector('.chart-container');
+            const compBox = document.createElement('div');
+            compBox.className = 'comparison-box';
+            compBox.innerHTML = comparisonText;
+            chartContainer.appendChild(compBox);
+        }
+
+        function clearSelections() {
+            selections = [];
+
+            // Remove comparison box
+            const oldBox = document.querySelector('.comparison-box');
+            if (oldBox) oldBox.remove();
+
+            // Deselect all points
+            const chart = document.getElementById('chart');
+            Plotly.restyle(chart, {'selectedpoints': [null]});
+
+            // Remove any comparison traces that were added visually
+            if (comparisonTraceIndices.length > 0) {
+                Plotly.deleteTraces(chart, comparisonTraceIndices);
+                comparisonTraceIndices = [];
+            }
+
+            console.log('All selections cleared');
+        }
+
+        function downloadChart() {
+            Plotly.downloadImage('chart', {
+                format: 'png',
+                width: 1200,
+                height: 800,
+                filename: currentTemplate ? currentTemplate.title.toLowerCase().replace(/\s+/g, '_') : 'chart'
+            });
+        }
+
+        function openDescriptionModal() {
+            const modal = document.getElementById('descriptionModal');
+            const display = document.getElementById('descriptionDisplay');
+            const textarea = document.getElementById('descriptionTextarea');
+
+            // Load saved description from localStorage
+            const savedKey = `chart_desc_${currentTemplate.id}`;
+            const savedDesc = localStorage.getItem(savedKey);
+
+            if (savedDesc) {
+                display.textContent = savedDesc;
+                textarea.value = savedDesc;
+            } else {
+                display.textContent = currentTemplate.desc || 'No description available. Click "Edit Description" to add your analysis.';
+                textarea.value = currentTemplate.desc || '';
+            }
+
+            // Show view mode
+            document.getElementById('descriptionViewMode').style.display = 'block';
+            document.getElementById('descriptionEditMode').style.display = 'none';
+
+            modal.classList.add('active');
+        }
+
+        function closeDescriptionModal() {
+            document.getElementById('descriptionModal').classList.remove('active');
+        }
+
+        function toggleEditMode() {
+            const viewMode = document.getElementById('descriptionViewMode');
+            const editMode = document.getElementById('descriptionEditMode');
+
+            if (viewMode.style.display === 'none') {
+                // Switch to view mode
+                viewMode.style.display = 'block';
+                editMode.style.display = 'none';
+            } else {
+                // Switch to edit mode
+                viewMode.style.display = 'none';
+                editMode.style.display = 'block';
+                document.getElementById('descriptionTextarea').focus();
+            }
+        }
+
+        function saveDescription() {
+            const textarea = document.getElementById('descriptionTextarea');
+            const description = textarea.value.trim();
+
+            // Save to localStorage
+            const savedKey = `chart_desc_${currentTemplate.id}`;
+            localStorage.setItem(savedKey, description);
+
+            // Update display
+            const display = document.getElementById('descriptionDisplay');
+            display.textContent = description || 'No description available. Click "Edit Description" to add your analysis.';
+
+            // Switch back to view mode
+            toggleEditMode();
+
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #228B22; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10001; animation: slideIn 0.3s ease;';
+            successMsg.innerHTML = '<i class="bi bi-check-circle"></i> Description saved successfully!';
+            document.body.appendChild(successMsg);
+
+            setTimeout(() => {
+                successMsg.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => successMsg.remove(), 300);
+            }, 2000);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('descriptionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDescriptionModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDescriptionModal();
+            }
+        });
+
+        function goBack() {
+            window.close();
+            // If window.close() doesn't work (not opened by script), redirect
+            setTimeout(() => {
+                window.location.href = '/viz-templates';
+            }, 100);
+        }
+    </script>
+</body>
+</html>

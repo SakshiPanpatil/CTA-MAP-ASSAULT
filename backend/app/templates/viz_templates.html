@@ -759,16 +759,30 @@
         let savedPlots = [];
         const SAVED_PLOTS_KEY = 'cta_viz_saved_plots_v1';
 
-        // Professional analyst color palettes
+        // CTA Military-grade color palette (from CTA Risk Assessment Matrix - image.jpg)
+        // These colors match the official CTA safety severity levels
         const COLOR_PALETTES = {
+            military: [
+                '#DC143C',  // Crimson Red - Catastrophic/Unacceptable
+                '#FF6347',  // Tomato Red - Critical/High Risk
+                '#FF8C00',  // Dark Orange - Critical/Undesirable
+                '#FFA500',  // Orange - Moderate Risk
+                '#FFD700',  // Gold - Marginal/Accept w/ Review
+                '#9ACD32',  // Yellow Green - Low Risk
+                '#228B22',  // Forest Green - Negligible/Acceptable
+                '#0c5ed7',  // Blue - Eliminated
+                '#1990ff',  // Light Blue - Very Low
+                '#708090'   // Slate Gray - Neutral
+            ],
+            severity: ['#228B22', '#9ACD32', '#FFD700', '#FF8C00', '#DC143C'], // Green to Red (severity scale)
             main: ['#0066B3', '#C8102E', '#FFC857', '#2FBF71', '#7A76FF', '#FF6F61', '#00AFC1', '#E07A5F', '#3D5A80', '#6C5B7B'],
             categorical: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'],
             sequential: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
-            diverging: ['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4'],
-            vibrant: ['#E63946', '#F77F00', '#FCBF49', '#06D6A0', '#118AB2', '#073B4C', '#EF476F', '#FFD166', '#06FFA5', '#8338EC']
+            diverging: ['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4']
         };
 
-        const COLOR_PALETTE = COLOR_PALETTES.vibrant;
+        // Always use military colors for CTA assault data
+        const COLOR_PALETTE = COLOR_PALETTES.military;
 
         const templates = [
             {
@@ -1157,13 +1171,22 @@
                 const when = p.savedLabel || '';
                 const label = when ? `My Plot • ${escapeHtml(when)}` : 'My Plot';
                 return `
-                    <div class="template-card" onclick="selectSavedPlot('${p.id}')">
-                        <div class="template-icon">
-                            <i class="bi bi-star-fill"></i>
+                    <div class="template-card" style="position: relative;">
+                        <button onclick="event.stopPropagation(); showDeleteMenu('${p.id}', this)"
+                                style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.05); color: #5f6b7b; border: none; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; z-index: 10; transition: all 0.2s;"
+                                onmouseover="this.style.background='rgba(0,0,0,0.1)'"
+                                onmouseout="this.style.background='rgba(0,0,0,0.05)'"
+                                title="Options">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <div onclick="selectSavedPlot('${p.id}')" style="cursor: pointer;">
+                            <div class="template-icon">
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                            <div class="template-title">${safeTitle}</div>
+                            <div class="template-desc">${safeDesc}</div>
+                            <span class="data-type-badge categorical">${label}</span>
                         </div>
-                        <div class="template-title">${safeTitle}</div>
-                        <div class="template-desc">${safeDesc}</div>
-                        <span class="data-type-badge categorical">${label}</span>
                     </div>
                 `;
             }).join('');
@@ -1186,22 +1209,17 @@
 
         // Select template from library (templates mode)
         function selectTemplate(id) {
-            currentTemplate = templates.find(t => t.id === id);
+            const template = templates.find(t => t.id === id);
+            if (!template) return;
 
-            // Populate chart type selector with recommendations
-            populateChartTypes();
+            // Create URL parameters for the template
+            const params = new URLSearchParams({
+                mode: 'template',
+                id: id
+            });
 
-            document.getElementById('chartType').value = currentTemplate.chartType;
-
-            // Update chart title
-            document.getElementById('chartTitleText').textContent = currentTemplate.title;
-
-            // Show chart view; keep My Plots section hidden in templates mode
-            document.getElementById('chartView').classList.add('active');
-            document.getElementById('viz-title').style.display = 'none';
-            document.getElementById('viz-subtitle').style.display = 'none';
-
-            renderChart();
+            // Open chart viewer page in new tab
+            window.open(`/view-chart?${params.toString()}`, '_blank');
         }
 
         // Populate chart type dropdown with only valid chart types
@@ -1262,43 +1280,200 @@
             const plot = savedPlots.find(p => p.id === id);
             if (!plot) return;
 
-            currentTemplate = {
-                id: plot.id,
-                title: plot.title || 'Custom Plot',
-                desc: plot.desc || '',
+            // Create URL parameters for the saved plot with complete metadata
+            const params = new URLSearchParams({
+                mode: 'saved',
+                id: id,
                 x: plot.x,
+                xLabel: plot.xLabel || plot.x,
                 y: plot.y,
+                yLabel: plot.yLabel || plot.y,
                 chartType: plot.chartType || 'bar',
-                dataType: 'categorical',
                 aggregation: plot.aggregation || 'count',
-                color: plot.color || null
-            };
+                title: plot.title || 'Custom Plot',
+                dataType: plot.dataType || 'categorical'
+            });
 
-            if (currentTemplate.desc) {
-                plotDescriptions[currentTemplate.id] = currentTemplate.desc;
+            // Optional fields - only add if they have real values (not null/undefined)
+            if (plot.color && plot.color !== 'null' && plot.color !== 'undefined') {
+                params.append('color', plot.color);
+            }
+            if (plot.colorLabel && plot.colorLabel !== 'null' && plot.colorLabel !== 'undefined') {
+                params.append('colorLabel', plot.colorLabel);
+            }
+            if (plot.desc) params.append('desc', plot.desc);
+            if (plot.z && plot.z !== 'null' && plot.z !== 'undefined') {
+                params.append('z', plot.z);
+            }
+            if (plot.sortByHour) params.append('sortByHour', plot.sortByHour);
+
+            // Recommended chart types (pass as comma-separated list)
+            if (plot.recommended && Array.isArray(plot.recommended)) {
+                params.append('recommended', plot.recommended.join(','));
             }
 
+            // Filters
             const filters = plot.filters || {};
-            const yearStartInput = document.getElementById('yearStart');
-            const yearEndInput = document.getElementById('yearEnd');
-            if (yearStartInput && yearEndInput) {
-                yearStartInput.value = filters.yearStart || '';
-                yearEndInput.value = filters.yearEnd || '';
+            if (filters.yearStart) params.append('yearStart', filters.yearStart);
+            if (filters.yearEnd) params.append('yearEnd', filters.yearEnd);
+
+            // Open chart viewer page in new tab
+            window.open(`/view-chart?${params.toString()}`, '_blank');
+        }
+
+        function showDeleteMenu(id, btn) {
+            // Remove any existing menus
+            const existingMenu = document.querySelector('.delete-menu');
+            if (existingMenu) existingMenu.remove();
+
+            // Create menu
+            const menu = document.createElement('div');
+            menu.className = 'delete-menu';
+            menu.style.cssText = `
+                position: absolute;
+                top: ${btn.offsetTop + btn.offsetHeight + 4}px;
+                right: ${btn.parentElement.offsetWidth - (btn.offsetLeft + btn.offsetWidth)}px;
+                background: white;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                overflow: hidden;
+                min-width: 150px;
+            `;
+
+            menu.innerHTML = `
+                <button onclick="deleteSavedPlot('${id}')" style="
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: none;
+                    background: white;
+                    color: #DC143C;
+                    text-align: left;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: background 0.2s;
+                "
+                onmouseover="this.style.background='#f8f9fa'"
+                onmouseout="this.style.background='white'">
+                    <i class="bi bi-trash3"></i>
+                    Delete Plot
+                </button>
+            `;
+
+            btn.parentElement.appendChild(menu);
+
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== btn) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 10);
+        }
+
+        function deleteSavedPlot(id) {
+            // Remove menu
+            const menu = document.querySelector('.delete-menu');
+            if (menu) menu.remove();
+
+            // Remove from array
+            savedPlots = savedPlots.filter(p => p.id !== id);
+
+            // Save to localStorage
+            try {
+                localStorage.setItem(SAVED_PLOTS_KEY, JSON.stringify(savedPlots));
+            } catch (e) {
+                console.error('Failed to save after deletion:', e);
             }
 
-            populateChartTypes();
-            document.getElementById('chartType').value = currentTemplate.chartType;
-            document.getElementById('chartTitleText').textContent = currentTemplate.title;
+            // Re-render
+            renderMyPlots();
 
-            const myTab = document.getElementById('myPlotsTab');
-            if (myTab) {
-                myTab.style.display = 'none';
-            }
-            document.getElementById('chartView').classList.add('active');
-            document.getElementById('viz-title').style.display = 'none';
-            document.getElementById('viz-subtitle').style.display = 'none';
+            // Show success message
+            showBusNotification('Plot deleted successfully', 'delete');
+        }
 
-            applyFilters();
+        // Professional CTA Bus Notification - Centered, CTA-themed, 1.69 seconds
+        function showBusNotification(message, type = 'save') {
+            // Match site theme: CTA blue for save, CTA red for delete
+            const bgColor = type === 'save'
+                ? 'rgba(0, 102, 179, 0.12)'   // CTA blue
+                : 'rgba(200, 16, 46, 0.12)';  // CTA red
+            const borderColor = type === 'save' ? '#0066B3' : '#C8102E';
+            const iconColor = type === 'save' ? '#0066B3' : '#C8102E';
+
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0.8);
+                background: ${bgColor};
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                color: #1a202c;
+                padding: 20px 40px;
+                border-radius: 16px;
+                border: 2px solid ${borderColor};
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                min-width: 380px;
+                opacity: 0;
+                animation: centerFadeInOut 1.69s ease-in-out forwards;
+            `;
+
+            // Professional bus SVG icon with subtle glow
+            const busIcon = `
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="${iconColor}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+                    <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                </svg>
+            `;
+
+            notification.innerHTML = `
+                <div style="flex-shrink: 0;">
+                    ${busIcon}
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-size: 15px; font-weight: 600; color: #1a202c; letter-spacing: 0.3px;">
+                        ${message}
+                    </div>
+                </div>
+                <style>
+                    @keyframes centerFadeInOut {
+                        0% {
+                            opacity: 0;
+                            transform: translate(-50%, -50%) scale(0.8);
+                        }
+                        10% {
+                            opacity: 1;
+                            transform: translate(-50%, -50%) scale(1);
+                        }
+                        90% {
+                            opacity: 1;
+                            transform: translate(-50%, -50%) scale(1);
+                        }
+                        100% {
+                            opacity: 0;
+                            transform: translate(-50%, -50%) scale(0.95);
+                        }
+                    }
+                </style>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Remove after 1.69 seconds
+            setTimeout(() => notification.remove(), 1690);
         }
 
         // Go back to My Plots / gallery or templates list
@@ -1863,8 +2038,52 @@
                 responsive: true,
                 displayModeBar: true,
                 displaylogo: false,
-                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+                modeBarButtonsToRemove: [], // Keep all default buttons including pan, lasso, select, box select
                 modeBarButtonsToAdd: [
+                    {
+                        name: 'Zoom In',
+                        icon: {
+                            width: 1792,
+                            height: 1792,
+                            path: 'M1664 960v-256q0 -26 -19 -45t-45 -19h-384v-384q0 -26 -19 -45t-45 -19h-256q-26 0 -45 19t-19 45v384h-384q-26 0 -45 19t-19 45v256q0 26 19 45t45 19h384v384q0 26 19 45t45 19h256q26 0 45 -19t19 -45v-384h384q26 0 45 -19t19 -45z',
+                            transform: 'matrix(1 0 0 -1 0 1792)'
+                        },
+                        click: function(gd) {
+                            const layout = gd.layout;
+                            const xRange = layout.xaxis.range;
+                            const yRange = layout.yaxis.range;
+                            const xCenter = (xRange[0] + xRange[1]) / 2;
+                            const yCenter = (yRange[0] + yRange[1]) / 2;
+                            const xZoom = (xRange[1] - xRange[0]) * 0.4;
+                            const yZoom = (yRange[1] - yRange[0]) * 0.4;
+                            Plotly.relayout(gd, {
+                                'xaxis.range': [xCenter - xZoom, xCenter + xZoom],
+                                'yaxis.range': [yCenter - yZoom, yCenter + yZoom]
+                            });
+                        }
+                    },
+                    {
+                        name: 'Zoom Out',
+                        icon: {
+                            width: 1792,
+                            height: 1792,
+                            path: 'M1664 960v-256q0 -26 -19 -45t-45 -19h-896q-26 0 -45 19t-19 45v256q0 26 19 45t45 19h896q26 0 45 -19t19 -45z',
+                            transform: 'matrix(1 0 0 -1 0 1792)'
+                        },
+                        click: function(gd) {
+                            const layout = gd.layout;
+                            const xRange = layout.xaxis.range;
+                            const yRange = layout.yaxis.range;
+                            const xCenter = (xRange[0] + xRange[1]) / 2;
+                            const yCenter = (yRange[0] + yRange[1]) / 2;
+                            const xZoom = (xRange[1] - xRange[0]) * 1.25;
+                            const yZoom = (yRange[1] - yRange[0]) * 1.25;
+                            Plotly.relayout(gd, {
+                                'xaxis.range': [xCenter - xZoom, xCenter + xZoom],
+                                'yaxis.range': [yCenter - yZoom, yCenter + yZoom]
+                            });
+                        }
+                    },
                     {
                         name: 'Toggle Spike Lines',
                         icon: Plotly.Icons.drawline,
