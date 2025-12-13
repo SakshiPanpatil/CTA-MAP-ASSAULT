@@ -355,7 +355,7 @@ class ComprehensiveSafetyReport:
 
         # Cover - SPECIFIC TITLE
         specific_title = f"Stop Safety Analysis: {stop_name}"
-        specific_subtitle = f"{len(nearby)} Assault Incidents within {radius_km}km Radius"
+        specific_subtitle = f"{len(nearby)} Incidents within {radius_km}km Radius"
         context_info = {
             "Stop Location": stop_name,
             "Coordinates": f"Lat {stop_lat:.4f}, Lon {stop_lon:.4f}",
@@ -650,7 +650,7 @@ class ComprehensiveSafetyReport:
         primary_location = locations[0] if locations else "CTA Transit System"
 
         # Cover - SPECIFIC TITLE
-        specific_title = f"Assault Cluster Investigation Report"
+        specific_title = f"Incident Cluster Investigation Report"
         specific_subtitle = f"{total} Related Incidents - {primary_location}"
 
         # Calculate date range for context
@@ -664,7 +664,7 @@ class ComprehensiveSafetyReport:
             date_span = "Date range unavailable"
 
         context_info = {
-            "Incident Count": f"{total} assault incidents",
+            "Incident Count": f"{total} incidents",
             "Time Period": date_span,
             "Primary Location": primary_location[:50],
             "Analysis Type": "Clustered Incident Investigation",
@@ -795,7 +795,7 @@ class ComprehensiveSafetyReport:
             if forecast_result:
                 # Seasonal Decomposition
                 story.append(Paragraph("Seasonal Pattern Analysis", self.styles["CTASubsection"]))
-                decomp_plot = forecast_analytics.create_seasonal_decomposition_plot(monthly_series, "Assault Cluster")
+                decomp_plot = forecast_analytics.create_seasonal_decomposition_plot(monthly_series, "Incident Cluster")
                 if decomp_plot:
                     story.append(Image(decomp_plot, width=6.2*inch, height=4.2*inch))
                     story.append(Spacer(1, 0.03*inch))
@@ -811,7 +811,7 @@ class ComprehensiveSafetyReport:
                 story.append(Paragraph("6-Month Predictive Forecast", self.styles["CTASubsection"]))
                 forecast_plot = forecast_analytics.create_enhanced_forecast_plot(
                     forecast_result,
-                    title="Assault Cluster Forecast",
+                    title="Incident Cluster Forecast",
                     show_metrics=True
                 )
                 story.append(Image(forecast_plot, width=6.5*inch, height=3.2*inch))
@@ -832,7 +832,7 @@ class ComprehensiveSafetyReport:
                 story.append(Spacer(1, 0.15*inch))
 
                 # WHY Analysis - Most Important Part
-                why_analysis = forecast_analytics.generate_why_analysis(forecast_result, monthly_series, "Assault Cluster")
+                why_analysis = forecast_analytics.generate_why_analysis(forecast_result, monthly_series, "Incident Cluster")
 
                 story.append(Paragraph("Understanding Current Trends - WHY NOW?", self.styles["CTASubsection"]))
                 story.append(Paragraph(

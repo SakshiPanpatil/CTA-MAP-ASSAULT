@@ -168,7 +168,7 @@ def create_time_series_plot(assaults: list[dict[str, Any]]) -> io.BytesIO:
 
         ax.set_xlabel("Month", fontsize=12, fontweight="bold", color=COLORS["primary"])
         ax.set_ylabel("Number of Incidents", fontsize=12, fontweight="bold", color=COLORS["primary"])
-        ax.set_title("Assault Incidents Over Time", fontsize=14, fontweight="bold", pad=15, color=COLORS["primary"])
+        ax.set_title("Incidents Over Time", fontsize=14, fontweight="bold", pad=15, color=COLORS["primary"])
         ax.grid(True, alpha=0.3, linestyle="--", linewidth=1)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)

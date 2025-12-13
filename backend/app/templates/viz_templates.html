@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTA Assault Plot Gallery</title>
+    <title>CTA Incident Plot Gallery</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -656,7 +656,7 @@
             </button>
         </div>
         <div class="header-text">
-            <h1 id="viz-title">CTA Assault Plot Gallery</h1>
+            <h1 id="viz-title">CTA Incident Plot Gallery</h1>
             <p id="viz-subtitle">Review saved analyst plots and CTA-standard templates</p>
         </div>
     </div>
@@ -670,14 +670,14 @@
         <div id="myPlotsSection">
             <h2 class="section-title">My Plots</h2>
             <p class="section-subtitle">
-                Saved visualizations you created in the Assault Visualization Builder.
+                Saved visualizations you created in the Incident Visualization Builder.
             </p>
             <div id="myPlotsGrid" class="templates-grid"></div>
         </div>
 
         <div id="templatesSection" style="display: none;">
             <h2 class="section-title" style="margin-top: 8px;">Template Library</h2>
-            <p class="section-subtitle">Pre-built CTA analyst templates using the official safety color system.</p>
+            <p class="section-subtitle">Pre-built CTA analyst templates for reference.</p>
             <!-- Gallery View -->
             <div id="galleryView" class="templates-grid"></div>
         </div>
@@ -787,9 +787,9 @@
         const templates = [
             {
                 id: 1,
-                title: "Assault Trends Over Time",
+                title: "Incident Trends Over Time",
                 icon: "bi-graph-up",
-                desc: "Yearly assault frequency from 2016 to 2025",
+                desc: "Yearly incident frequency from 2016 to 2025",
                 x: "Year",
                 y: "count",
                 chartType: "line",
@@ -798,7 +798,7 @@
             },
             {
                 id: 2,
-                title: "Hourly Assault Distribution",
+                title: "Hourly Incident Distribution",
                 icon: "bi-clock-history",
                 desc: "Which hours of the day have most incidents",
                 x: "HourDisplay",
@@ -810,9 +810,9 @@
             },
             {
                 id: 3,
-                title: "Assault Types Breakdown",
+                title: "Incident Types Breakdown",
                 icon: "bi-pie-chart-fill",
-                desc: "Distribution of different assault event types",
+                desc: "Distribution of different incident event types",
                 x: "Event Type",
                 y: "count",
                 chartType: "pie",
@@ -823,7 +823,7 @@
                 id: 4,
                 title: "Location Type Analysis",
                 icon: "bi-geo-alt",
-                desc: "Where assaults occur most frequently",
+                desc: "Where incidents occur most frequently",
                 x: "Location Type",
                 y: "count",
                 chartType: "bar",
@@ -832,7 +832,7 @@
             },
             {
                 id: 5,
-                title: "Monthly Assault Patterns",
+                title: "Monthly Incident Patterns",
                 icon: "bi-calendar3",
                 desc: "Seasonal trends throughout the year",
                 x: "Month",
@@ -845,7 +845,7 @@
                 id: 6,
                 title: "Day of Week Distribution",
                 icon: "bi-calendar-week",
-                desc: "Which days have highest assault rates",
+                desc: "Which days have highest incident rates",
                 x: "DayOfWeek",
                 y: "count",
                 chartType: "bar",
@@ -854,7 +854,7 @@
             },
             {
                 id: 7,
-                title: "Weather Impact on Assaults",
+                title: "Weather Impact on Incidents",
                 icon: "bi-cloud-sun",
                 desc: "How weather conditions correlate with incidents",
                 x: "Weather",
@@ -867,7 +867,7 @@
                 id: 8,
                 title: "Lighting Conditions Analysis",
                 icon: "bi-brightness-high",
-                desc: "Daylight vs dark assault distribution",
+                desc: "Daylight vs dark incident distribution",
                 x: "Lighting",
                 y: "count",
                 chartType: "pie",
@@ -1198,7 +1198,7 @@
                     </div>
                     <div class="template-title">Templates Library</div>
                     <div class="template-desc">
-                        Open all CTA-standard assault analysis templates for quick, one-click chart setups.
+                        Open all CTA-standard incident analysis templates for quick, one-click chart setups.
                     </div>
                     <span class="data-type-badge categorical">Templates</span>
                 </div>
@@ -1813,7 +1813,7 @@
                     ],
                     colorbar: {
                         title: {
-                            text: 'Assault Count',
+                            text: 'Incident Count',
                             side: 'right',
                             font: { size: 13, family: 'Inter, sans-serif', color: '#2d3748' }
                         },
@@ -1821,7 +1821,7 @@
                         len: 0.75,
                         tickfont: { size: 11, family: 'Inter, sans-serif' }
                     },
-                    hovertemplate: '<b>%{x}</b><br>Hour: %{y}<br><b>Assaults: %{z}</b><extra></extra>',
+                    hovertemplate: '<b>%{x}</b><br>Hour: %{y}</b><br><b>Incidents: %{z}</b><extra></extra>',
                     hoverlabel: {
                         bgcolor: 'white',
                         bordercolor: '#e2e8f0',
@@ -2285,8 +2285,8 @@
                 if (chartView) chartView.classList.remove('active');
                 const titleEl = document.getElementById('viz-title');
                 const subtitleEl = document.getElementById('viz-subtitle');
-                if (titleEl) titleEl.textContent = 'CTA Assault Templates';
-                if (subtitleEl) subtitleEl.textContent = 'Select a template to explore CTA assault patterns';
+                if (titleEl) titleEl.textContent = 'CTA Incident Templates';
+                if (subtitleEl) subtitleEl.textContent = 'Select a template to explore CTA incident patterns';
             } else {
                 if (mySection) mySection.style.display = '';
                 if (templatesSection) templatesSection.style.display = 'none';

@@ -110,7 +110,7 @@ def generate_assault_cluster_report(
         ) from exc
 
     # Return PDF
-    filename = f"CTA_Assault_Cluster_Report_{len(selected_incidents)}_incidents.pdf"
+    filename = f"CTA_Incident_Cluster_Report_{len(selected_incidents)}_incidents.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

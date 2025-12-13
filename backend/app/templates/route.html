@@ -683,7 +683,7 @@
                 <div class="metric-value" id="stop-count">0</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Assaults</div>
+                <div class="metric-label">Incidents</div>
                 <div class="metric-value" id="assault-count">0</div>
             </div>
         </div>
@@ -697,7 +697,7 @@
                 </button>
                 <button id="view-assaults" class="view-toggle" data-view="assaults">
                     <span class="bi bi-exclamation-triangle-fill" style="font-size: 1.1rem;"></span>
-                    <span style="font-size: 0.75rem;">Assaults</span>
+                    <span style="font-size: 0.75rem;">Incidents</span>
                 </button>
                 <button id="view-both" class="view-toggle active" data-view="both">
                     <span class="bi bi-map" style="font-size: 1.1rem;"></span>
@@ -749,7 +749,7 @@
 
     </aside>
         <div class="legend-panel">
-            <h2>Assault Risk Level (CTA Matrix)</h2>
+            <h2>Incident Risk Level (CTA Matrix)</h2>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#228B22;"></span>
                 1 incident (Low)
@@ -1260,6 +1260,15 @@ async function downloadAssaultClusterPDF(incidentIds) {
     console.log(`   Status: Requesting PDF from backend...`);
 
     try {
+        // Normalize IDs to integers to match backend schema
+        const normalizedIds = incidentIds
+            .map(id => Number(id))
+            .filter(id => Number.isFinite(id));
+
+        if (!normalizedIds.length) {
+            throw new Error('No valid incident IDs found for this cluster.');
+        }
+
         updateProgressBar(20, 'Requesting cluster analysis...');
 
         const response = await fetch(`${REPORTS_BASE}/assault-cluster`, {
@@ -1268,11 +1277,18 @@ async function downloadAssaultClusterPDF(incidentIds) {
                 'Authorization': `Bearer ${AUTH.token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(incidentIds)
+            body: JSON.stringify(normalizedIds)
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to generate PDF: ${response.status}`);
+            let detail = '';
+            try {
+                const errorPayload = await response.json();
+                detail = errorPayload.detail || '';
+            } catch (_) {
+                // Ignore JSON parse errors, fall back to status only
+            }
+            throw new Error(`Failed to generate PDF (status ${response.status}${detail ? `: ${detail}` : ''})`);
         }
 
         updateProgressBar(60, 'Processing incident data...');
@@ -1284,14 +1300,14 @@ async function downloadAssaultClusterPDF(incidentIds) {
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = `CTA_Assault_Cluster_Report_${incidentIds.length}_incidents.pdf`;
+        a.download = `CTA_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
         updateProgressBar(100, 'Download complete!');
-        console.log(`   Download started: CTA_Assault_Cluster_Report_${incidentIds.length}_incidents.pdf`);
+        console.log(`   Download started: CTA_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`);
 
         // Brief delay to show 100% completion
         setTimeout(() => {
@@ -1303,7 +1319,7 @@ async function downloadAssaultClusterPDF(incidentIds) {
         hideLoadingOverlay();
         console.log(`%cREPORT GENERATION FAILED`, 'color: #b71c1c; font-weight: bold; font-size: 14px;');
         console.error('   Error details:', error);
-        alert('Failed to generate PDF report. Please try again.');
+        alert(`Failed to generate PDF report.\n\n${error && error.message ? error.message : 'Please try again or contact the administrator.'}`);
     }
 }
 
