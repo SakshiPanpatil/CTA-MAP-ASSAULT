@@ -8,6 +8,12 @@ fastapi
 uvicorn[standard]
 pydantic-settings
 python-jose[cryptography]
+sqlalchemy
+alembic
+psycopg2-binary
+passlib[bcrypt]
+python-dotenv
+email-validator
 reportlab
 plotly
 kaleido
