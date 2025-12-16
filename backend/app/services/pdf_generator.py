@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class ComprehensiveSafetyReport:
-    """Generate comprehensive AI-powered PDF safety reports."""
+    """Generate comprehensive incident analysis PDF safety reports."""
 
     # CTA MILITARY CODE SYSTEM - Risk Assessment Matrix Colors
     CTA_BLUE = colors.HexColor("#0c5ed7")
@@ -609,7 +609,7 @@ class ComprehensiveSafetyReport:
             story.append(PageBreak())
 
             # AI Insights
-            story.append(Paragraph("AI-Powered Insights", self.styles["CTASectionHeader"]))
+            story.append(Paragraph("Incident Insights", self.styles["CTASectionHeader"]))
             story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 3500),
                                  self.styles["CTABodyText"]))
 
@@ -910,7 +910,7 @@ class ComprehensiveSafetyReport:
         story.append(PageBreak())
 
         # AI Analysis
-        story.append(Paragraph("AI-Powered Analysis", self.styles["CTASectionHeader"]))
+        story.append(Paragraph("Incident Analysis", self.styles["CTASectionHeader"]))
         story.append(Paragraph(self._safe_text(all_insights.get("pattern_analysis", ""), 3500),
                              self.styles["CTABodyText"]))
         story.append(Spacer(1, 0.15*inch))

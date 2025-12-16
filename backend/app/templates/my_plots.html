@@ -141,6 +141,15 @@
     </style>
 </head>
 <body>
+    <script>
+        // Authentication check - redirect to login if not authenticated
+        (function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            }
+        })();
+    </script>
     <div class="container">
         <div class="header">
             <h1>My Saved Plots</h1>

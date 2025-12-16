@@ -651,6 +651,15 @@
     </style>
 </head>
 <body>
+    <script>
+        // Authentication check - redirect to login if not authenticated
+        (function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            }
+        })();
+    </script>
     <div id="save-plot-overlay" class="save-plot-overlay">
         <div class="save-plot-card">
             <div class="save-plot-header">

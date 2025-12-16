@@ -1,5 +1,5 @@
 """
-AI-Powered Insights Generator - ENHANCED VERSION
+Incident Analysis Insights Generator - ENHANCED VERSION
 High-quality, detailed analysis for safety reports.
 """
 from __future__ import annotations
