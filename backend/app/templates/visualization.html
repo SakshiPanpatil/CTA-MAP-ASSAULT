@@ -409,6 +409,78 @@
             color: var(--cta-blue);
         }
 
+        /* Saved Plots List */
+        .saved-plot-item {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .saved-plot-item:hover {
+            background: #e7f5ff;
+            border-color: var(--cta-blue);
+            transform: translateX(2px);
+        }
+
+        .saved-plot-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .saved-plot-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .saved-plot-date {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .saved-plot-delete {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 0, 0, 0.1);
+            color: var(--cta-red);
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .saved-plot-item:hover .saved-plot-delete {
+            opacity: 1;
+        }
+
+        .saved-plot-delete:hover {
+            background: var(--cta-red);
+            color: white;
+        }
+
+        .empty-saved-plots {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
         /* Loading */
         .loading {
             position: fixed;
@@ -823,6 +895,16 @@
                     </div>
                 </div>
             </div>
+
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-star-fill" style="margin-right: 4px;"></i>
+                    <span>My Saved Plots</span>
+                </label>
+                <div id="savedPlotsList" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Saved plots will be loaded here -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -947,6 +1029,7 @@
             loadData();
             renderFields();
             setupDragAndDrop();
+            loadSavedPlots();
         });
 
         // Load CSV data
@@ -1700,7 +1783,18 @@
                 responsive: true,
                 displayModeBar: true,
                 displaylogo: false,
-                modeBarButtonsToRemove: [], // Keep all default buttons including pan, lasso, select
+                // Match the streamlined toolbar used on the view page
+                modeBarButtonsToRemove: [
+                    'zoom2d',
+                    'zoomIn2d',
+                    'zoomOut2d',
+                    'autoScale2d',
+                    'select2d',
+                    'lasso2d',
+                    'hoverClosestCartesian',
+                    'hoverCompareCartesian',
+                    'toggleSpikelines'
+                ],
                 modeBarButtonsToAdd: [
                     {
                         name: 'Zoom In',
@@ -1745,11 +1839,30 @@
                                 'yaxis.range': [yCenter - yZoom, yCenter + yZoom]
                             });
                         }
+                    },
+                    {
+                        name: 'Toggle Spike Lines',
+                        icon: Plotly.Icons.drawline,
+                        click: function(gd) {
+                            const update = {
+                                'xaxis.showspikes': !gd.layout.xaxis.showspikes,
+                                'yaxis.showspikes': !gd.layout.yaxis.showspikes,
+                                'xaxis.spikemode': 'across',
+                                'yaxis.spikemode': 'across',
+                                'xaxis.spikethickness': 2,
+                                'yaxis.spikethickness': 2,
+                                'xaxis.spikecolor': '#DC143C',
+                                'yaxis.spikecolor': '#DC143C',
+                                'xaxis.spikedash': 'solid',
+                                'yaxis.spikedash': 'solid'
+                            };
+                            Plotly.relayout(gd, update);
+                        }
                     }
                 ],
                 toImageButtonOptions: {
                     format: 'png',
-                    filename: 'cta_assault_visualization',
+                    filename: 'cta_incident_visualization',
                     height: 800,
                     width: 1200,
                     scale: 2
@@ -1859,7 +1972,7 @@
             pendingSavePlotConfig = null;
         }
 
-        function confirmSavePlotModal() {
+        async function confirmSavePlotModal() {
             if (!pendingSavePlotConfig) {
                 closeSavePlotModal();
                 return;
@@ -1891,24 +2004,69 @@
                 pendingSavePlotConfig.createdAt
             ).toLocaleString();
 
-            let existing = [];
-            try {
-                const raw = localStorage.getItem(SAVED_PLOTS_KEY);
-                if (raw) {
-                    existing = JSON.parse(raw);
-                    if (!Array.isArray(existing)) {
-                        existing = [];
+            // Check if user is logged in
+            const token = localStorage.getItem('access_token');
+
+            if (token) {
+                // Save to database
+                try {
+                    const response = await fetch('/api/v1/plots/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            title: rawTitle,
+                            description: desc,
+                            plot_data: pendingSavePlotConfig
+                        })
+                    });
+
+                    if (response.status === 401) {
+                        localStorage.removeItem('access_token');
+                        alert('Session expired. Please login to save plots.');
+                        closeSavePlotModal();
+                        return;
                     }
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save plot');
+                    }
+
+                    console.log('💾 [SAVED PLOT TO DATABASE]', pendingSavePlotConfig);
+
+                    // Reload saved plots list
+                    await loadSavedPlots();
+
+                    // Show success notification
+                    showBusNotification('Plot saved successfully!', 'save');
+
+                } catch (error) {
+                    console.error('Error saving plot:', error);
+                    alert('Failed to save plot. Please try again.');
+                    return;
                 }
-            } catch (e) {
-                existing = [];
+            } else {
+                // Fallback to localStorage if not logged in
+                let existing = [];
+                try {
+                    const raw = localStorage.getItem(SAVED_PLOTS_KEY);
+                    if (raw) {
+                        existing = JSON.parse(raw);
+                        if (!Array.isArray(existing)) {
+                            existing = [];
+                        }
+                    }
+                } catch (e) {
+                    existing = [];
+                }
+
+                existing.unshift(pendingSavePlotConfig);
+                localStorage.setItem(SAVED_PLOTS_KEY, JSON.stringify(existing));
+
+                console.log('💾 [SAVED PLOT TO LOCALSTORAGE]', pendingSavePlotConfig);
             }
-
-            existing.unshift(pendingSavePlotConfig);
-            localStorage.setItem(SAVED_PLOTS_KEY, JSON.stringify(existing));
-
-            console.log('💾 [SAVED PLOT CONFIG]', pendingSavePlotConfig);
-            console.log('📊 [Color field saved as]', pendingSavePlotConfig.color === null ? 'NULL ✅' : `"${pendingSavePlotConfig.color}" ❌ PROBLEM!`);
 
             // Notify parent page (viz templates) if embedded
             try {
@@ -2000,6 +2158,184 @@
 
             // Remove after 1.69 seconds
             setTimeout(() => notification.remove(), 1690);
+        }
+
+        // Load saved plots from database
+        async function loadSavedPlots() {
+            const container = document.getElementById('savedPlotsList');
+            if (!container) return;
+
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                container.innerHTML = '<div class="empty-saved-plots">Login to view saved plots</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/plots/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    container.innerHTML = '<div class="empty-saved-plots">Session expired. Please login.</div>';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load plots');
+                }
+
+                const plots = await response.json();
+
+                if (plots.length === 0) {
+                    container.innerHTML = '<div class="empty-saved-plots">No saved plots yet</div>';
+                    return;
+                }
+
+                // Display plots
+                container.innerHTML = plots.map(plot => `
+                    <div class="saved-plot-item" onclick="loadPlotConfig(${plot.id})">
+                        <div class="saved-plot-title">${escapeHtml(plot.title)}</div>
+                        <div class="saved-plot-desc">${escapeHtml(plot.description || 'No description')}</div>
+                        <div class="saved-plot-date">${new Date(plot.created_at).toLocaleDateString()}</div>
+                        <button class="saved-plot-delete" onclick="event.stopPropagation(); deleteSavedPlotFromDB(${plot.id})" title="Delete plot">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading saved plots:', error);
+                container.innerHTML = '<div class="empty-saved-plots">Error loading plots</div>';
+            }
+        }
+
+        // Load a plot configuration from the database
+        async function loadPlotConfig(plotId) {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please login to load plots');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/plots/${plotId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Session expired. Please login again.');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load plot');
+                }
+
+                const plot = await response.json();
+                const config = plot.plot_data;
+
+                // Restore the plot configuration
+                // Reset current zones
+                dropZones.xAxis = null;
+                dropZones.yAxis = null;
+                dropZones.color = null;
+
+                // Set X-Axis
+                if (config.x) {
+                    const xField = dimensions.find(d => d.field === config.x) || { name: config.xLabel, field: config.x };
+                    dropZones.xAxis = xField;
+                    updateDropZone('xAxis');
+                }
+
+                // Set Y-Axis
+                if (config.y) {
+                    const yField = measures.find(m => m.field === config.y) || { name: config.yLabel, field: config.y, isCount: config.y === 'count' };
+                    dropZones.yAxis = yField;
+                    updateDropZone('yAxis');
+                }
+
+                // Set Color (if exists)
+                if (config.color && config.color !== 'null' && config.color !== 'undefined') {
+                    const colorField = dimensions.find(d => d.field === config.color) || { name: config.colorLabel, field: config.color };
+                    dropZones.color = colorField;
+                    updateDropZone('color');
+                }
+
+                // Set chart type
+                const chartTypeSelect = document.getElementById('chartType');
+                if (chartTypeSelect && config.chartType) {
+                    chartTypeSelect.value = config.chartType;
+                }
+
+                // Set aggregation
+                const aggSelect = document.getElementById('aggregationFunction');
+                if (aggSelect && config.aggregation) {
+                    aggSelect.value = config.aggregation;
+                }
+
+                // Update the chart
+                updateChart();
+
+                showBusNotification(`Loaded: ${plot.title}`, 'save');
+
+            } catch (error) {
+                console.error('Error loading plot config:', error);
+                alert('Failed to load plot. Please try again.');
+            }
+        }
+
+        // Delete a saved plot from the database
+        async function deleteSavedPlotFromDB(plotId) {
+            if (!confirm('Are you sure you want to delete this plot?')) {
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please login to delete plots');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/plots/${plotId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Session expired. Please login again.');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete plot');
+                }
+
+                // Reload the saved plots list
+                await loadSavedPlots();
+
+                showBusNotification('Plot deleted successfully', 'delete');
+
+            } catch (error) {
+                console.error('Error deleting plot:', error);
+                alert('Failed to delete plot. Please try again.');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Update word count in modal

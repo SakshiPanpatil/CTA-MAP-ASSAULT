@@ -922,7 +922,7 @@
             },
             {
                 id: 13,
-                title: "Assault Type by Event Group",
+                title: "Incident Type by Event Group",
                 icon: "bi-funnel",
                 desc: "Detailed breakdown of event type groups",
                 x: "Event Type Group",
@@ -959,7 +959,7 @@
                 id: 16,
                 title: "Hour vs Day of Week Heatmap",
                 icon: "bi-grid-3x3-gap",
-                desc: "2D heatmap of assault concentration",
+                desc: "2D heatmap of incident concentration",
                 x: "DayOfWeek",
                 y: "HourDisplay",
                 z: "count",
@@ -972,7 +972,7 @@
                 id: 17,
                 title: "Year-over-Year Comparison",
                 icon: "bi-graph-down",
-                desc: "Comparing assault counts across years",
+                desc: "Comparing incident counts across years",
                 x: "Month",
                 y: "count",
                 color: "Year",
@@ -984,7 +984,7 @@
                 id: 18,
                 title: "Average Injuries per Event Type",
                 icon: "bi-graph-up-arrow",
-                desc: "Which assault types cause most injuries",
+                desc: "Which incident types cause most injuries",
                 x: "Event Type",
                 y: "Total Injuries",
                 aggregation: "avg",
@@ -996,7 +996,7 @@
                 id: 19,
                 title: "Fatalities by Event Type",
                 icon: "bi-exclamation-octagon",
-                desc: "Most deadly assault categories",
+                desc: "Most deadly incident categories",
                 x: "Event Type",
                 y: "Total Fatalities",
                 aggregation: "sum",
@@ -1006,7 +1006,7 @@
             },
             {
                 id: 20,
-                title: "Seasonal Assault Distribution",
+                title: "Seasonal Incident Distribution",
                 icon: "bi-calendar4-range",
                 desc: "Quarterly patterns across all years",
                 x: "Quarter",
@@ -1149,13 +1149,56 @@
             window.location.href = '/viz-templates?mode=templates';
         }
 
-        function loadSavedPlots() {
+        async function loadSavedPlots() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                // Not logged in - show localStorage plots as fallback
+                try {
+                    const raw = localStorage.getItem(SAVED_PLOTS_KEY);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    savedPlots = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    console.warn('Could not load saved plots:', e);
+                    savedPlots = [];
+                }
+                renderMyPlots();
+                return;
+            }
+
+            // Load from database if logged in
             try {
-                const raw = localStorage.getItem(SAVED_PLOTS_KEY);
-                const parsed = raw ? JSON.parse(raw) : [];
-                savedPlots = Array.isArray(parsed) ? parsed : [];
+                const response = await fetch('/api/v1/plots/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    // Fallback to localStorage
+                    const raw = localStorage.getItem(SAVED_PLOTS_KEY);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    savedPlots = Array.isArray(parsed) ? parsed : [];
+                    renderMyPlots();
+                    return;
+                }
+
+                if (response.ok) {
+                    const dbPlots = await response.json();
+                    // Convert database plots to the format expected by renderMyPlots
+                    savedPlots = dbPlots.map(plot => ({
+                        id: `db_${plot.id}`,
+                        title: plot.title,
+                        desc: plot.description,
+                        savedLabel: new Date(plot.created_at).toLocaleDateString(),
+                        plotData: plot.plot_data,
+                        dbId: plot.id
+                    }));
+                } else {
+                    savedPlots = [];
+                }
             } catch (e) {
-                console.warn('Could not load saved plots:', e);
+                console.warn('Could not load saved plots from database:', e);
                 savedPlots = [];
             }
             renderMyPlots();
@@ -1280,7 +1323,13 @@
             const plot = savedPlots.find(p => p.id === id);
             if (!plot) return;
 
-            // Create URL parameters for the saved plot with complete metadata
+            // If plot is from database, load it via plot_id
+            if (plot.dbId) {
+                window.open(`/view-chart?plot_id=${plot.dbId}`, '_blank');
+                return;
+            }
+
+            // For localStorage plots, create URL parameters
             const params = new URLSearchParams({
                 mode: 'saved',
                 id: id,
@@ -1378,12 +1427,53 @@
             }, 10);
         }
 
-        function deleteSavedPlot(id) {
+        async function deleteSavedPlot(id) {
             // Remove menu
             const menu = document.querySelector('.delete-menu');
             if (menu) menu.remove();
 
-            // Remove from array
+            const plot = savedPlots.find(p => p.id === id);
+            if (!plot) return;
+
+            // If plot is from database, delete via API
+            if (plot.dbId) {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    showBusNotification('Please login to delete plots', 'delete');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/v1/plots/${plot.dbId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        localStorage.removeItem('access_token');
+                        showBusNotification('Session expired. Please login again', 'delete');
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        showBusNotification('Failed to delete plot', 'delete');
+                        return;
+                    }
+
+                    // Remove from array
+                    savedPlots = savedPlots.filter(p => p.id !== id);
+                    renderMyPlots();
+                    showBusNotification('Plot deleted successfully', 'delete');
+                } catch (e) {
+                    console.error('Error deleting plot:', e);
+                    showBusNotification('Error deleting plot', 'delete');
+                }
+                return;
+            }
+
+            // For localStorage plots
             savedPlots = savedPlots.filter(p => p.id !== id);
 
             // Save to localStorage

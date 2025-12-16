@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTA Assault Chart Viewer</title>
+    <title>CTA Incident Chart Viewer</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -329,7 +329,7 @@
     </div>
 
     <div class="header">
-        <h1 id="pageTitle">CTA Assault Chart Viewer</h1>
+        <h1 id="pageTitle">CTA Incident Chart Viewer</h1>
         <button class="btn btn-light" onclick="goBack()">
             <i class="bi bi-arrow-left"></i> Back to Gallery
         </button>
@@ -356,6 +356,10 @@
 
             <button class="btn btn-light" style="margin-top: 18px;" onclick="downloadChart()">
                 <i class="bi bi-download"></i> Download PNG
+            </button>
+
+            <button class="btn" style="background: #28a745; color: white; margin-top: 18px;" onclick="openSavePlotModal()">
+                <i class="bi bi-save"></i> Save Plot
             </button>
 
             <div class="control-group" style="margin-top: 18px;">
@@ -422,6 +426,44 @@
                             <i class="bi bi-check-lg"></i> Save Description
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Plot Modal -->
+    <div id="savePlotModal" class="plot-description-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Plot to Database</h3>
+                <button class="close-modal" onclick="closeSavePlotModal()">&times;</button>
+            </div>
+            <div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Plot Title</label>
+                    <input
+                        type="text"
+                        id="savePlotTitle"
+                        style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.95rem;"
+                        placeholder="Enter a title for your plot..."
+                    />
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #333;">Description (Optional)</label>
+                    <textarea
+                        id="savePlotDescription"
+                        style="width: 100%; min-height: 100px; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.95rem; line-height: 1.6; resize: vertical;"
+                        placeholder="Add a description or notes about this plot..."
+                    ></textarea>
+                </div>
+                <div id="savePlotMessage" style="padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none;"></div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn btn-light" onclick="closeSavePlotModal()">
+                        Cancel
+                    </button>
+                    <button class="btn" style="background: #28a745; color: white;" onclick="savePlotToDatabase()">
+                        <i class="bi bi-save"></i> Save Plot
+                    </button>
                 </div>
             </div>
         </div>
@@ -506,8 +548,8 @@
         const templates = [
             {
                 id: 1,
-                title: "Assault Trends Over Time",
-                desc: "Yearly assault frequency from 2016 to 2025",
+                title: "Incident Trends Over Time",
+                desc: "Yearly incident frequency from 2016 to 2025",
                 x: "Year",
                 y: "count",
                 chartType: "line",
@@ -516,7 +558,7 @@
             },
             {
                 id: 2,
-                title: "Hourly Assault Distribution",
+                title: "Hourly Incident Distribution",
                 desc: "Which hours of the day have most incidents",
                 x: "HourDisplay",
                 y: "count",
@@ -527,8 +569,8 @@
             },
             {
                 id: 3,
-                title: "Assault Types Breakdown",
-                desc: "Distribution of different assault event types",
+                title: "Incident Types Breakdown",
+                desc: "Distribution of different incident event types",
                 x: "Event Type",
                 y: "count",
                 chartType: "pie",
@@ -547,7 +589,7 @@
             },
             {
                 id: 5,
-                title: "Monthly Assault Patterns",
+                title: "Monthly Incident Patterns",
                 desc: "Seasonal trends throughout the year",
                 x: "Month",
                 y: "count",
@@ -558,7 +600,7 @@
             {
                 id: 6,
                 title: "Day of Week Distribution",
-                desc: "Which days have highest assault rates",
+                desc: "Which days have highest incident rates",
                 x: "DayOfWeek",
                 y: "count",
                 chartType: "bar",
@@ -567,7 +609,7 @@
             },
             {
                 id: 7,
-                title: "Weather Impact on Assaults",
+                title: "Weather Impact on Incidents",
                 desc: "How weather conditions correlate with incidents",
                 x: "Weather",
                 y: "count",
@@ -578,7 +620,7 @@
             {
                 id: 8,
                 title: "Lighting Conditions Analysis",
-                desc: "Daylight vs dark assault distribution",
+                desc: "Daylight vs dark incident distribution",
                 x: "Lighting",
                 y: "count",
                 chartType: "pie",
@@ -629,7 +671,7 @@
             },
             {
                 id: 13,
-                title: "Assault Type by Event Group",
+                title: "Incident Type by Event Group",
                 desc: "Detailed breakdown of event type groups",
                 x: "Event Type Group",
                 y: "count",
@@ -662,7 +704,7 @@
             {
                 id: 16,
                 title: "Hour vs Day of Week Heatmap",
-                desc: "2D heatmap of assault concentration",
+                desc: "2D heatmap of incident concentration",
                 x: "DayOfWeek",
                 y: "HourDisplay",
                 z: "count",
@@ -674,7 +716,7 @@
             {
                 id: 17,
                 title: "Year-over-Year Comparison",
-                desc: "Comparing assault counts across years",
+                desc: "Comparing incident counts across years",
                 x: "Month",
                 y: "count",
                 color: "Year",
@@ -685,7 +727,7 @@
             {
                 id: 18,
                 title: "Average Injuries per Event Type",
-                desc: "Which assault types cause most injuries",
+                desc: "Which incident types cause most injuries",
                 x: "Event Type",
                 y: "Total Injuries",
                 aggregation: "avg",
@@ -696,7 +738,7 @@
             {
                 id: 19,
                 title: "Fatalities by Event Type",
-                desc: "Most deadly assault categories",
+                desc: "Most deadly incident categories",
                 x: "Event Type",
                 y: "Total Fatalities",
                 aggregation: "sum",
@@ -706,7 +748,7 @@
             },
             {
                 id: 20,
-                title: "Seasonal Assault Distribution",
+                title: "Seasonal Incident Distribution",
                 desc: "Quarterly patterns across all years",
                 x: "Quarter",
                 y: "count",
@@ -794,15 +836,71 @@
             const params = new URLSearchParams(window.location.search);
             const mode = params.get('mode');
             const id = params.get('id');
+            const plotId = params.get('plot_id');
 
-            console.log('loadFromURLParams called:', { mode, id });
+            console.log('loadFromURLParams called:', { mode, id, plotId });
 
-            if (mode === 'template' && id) {
+            if (plotId) {
+                loadPlotFromDatabase(plotId);
+            } else if (mode === 'template' && id) {
                 loadTemplate(parseInt(id), params);
             } else if (mode === 'saved') {
                 loadSavedPlot(params);
             } else {
                 console.warn('No valid mode or id found in URL');
+            }
+        }
+
+        async function loadPlotFromDatabase(plotId) {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please login to view saved plots');
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/plots/${plotId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Session expired. Please login again');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    alert('Failed to load plot');
+                    return;
+                }
+
+                const plot = await response.json();
+                const plotData = plot.plot_data;
+
+                // Create URL params from plot data
+                const params = new URLSearchParams();
+                Object.keys(plotData).forEach(key => {
+                    if (plotData[key] !== null && plotData[key] !== undefined) {
+                        if (Array.isArray(plotData[key])) {
+                            params.set(key, plotData[key].join(','));
+                        } else {
+                            params.set(key, plotData[key]);
+                        }
+                    }
+                });
+
+                // Override title with saved plot title
+                params.set('title', plot.title);
+                params.set('desc', plot.description || '');
+
+                loadSavedPlot(params);
+            } catch (error) {
+                console.error('Error loading plot:', error);
+                alert('Error loading plot. Please try again.');
             }
         }
 
@@ -1893,6 +1991,117 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeDescriptionModal();
+            }
+        });
+
+        // Save Plot Functions
+        function openSavePlotModal() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please login to save plots');
+                window.location.href = '/login';
+                return;
+            }
+
+            document.getElementById('savePlotModal').style.display = 'flex';
+            document.getElementById('savePlotTitle').value = currentTemplate.title || '';
+            document.getElementById('savePlotDescription').value = '';
+            document.getElementById('savePlotMessage').style.display = 'none';
+        }
+
+        function closeSavePlotModal() {
+            document.getElementById('savePlotModal').style.display = 'none';
+        }
+
+        async function savePlotToDatabase() {
+            const title = document.getElementById('savePlotTitle').value.trim();
+            const description = document.getElementById('savePlotDescription').value.trim();
+            const messageEl = document.getElementById('savePlotMessage');
+
+            if (!title) {
+                messageEl.style.background = '#fee';
+                messageEl.style.color = '#c33';
+                messageEl.textContent = 'Please enter a title for your plot';
+                messageEl.style.display = 'block';
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please login to save plots');
+                window.location.href = '/login';
+                return;
+            }
+
+            // Prepare plot data
+            const plotData = {
+                id: currentTemplate.id,
+                title: currentTemplate.title,
+                desc: currentTemplate.desc,
+                x: currentTemplate.x,
+                y: currentTemplate.y,
+                chartType: document.getElementById('chartType').value,
+                dataType: currentTemplate.dataType,
+                aggregation: currentTemplate.aggregation,
+                color: currentTemplate.color,
+                z: currentTemplate.z,
+                recommended: currentTemplate.recommended,
+                sortByHour: currentTemplate.sortByHour,
+                yearStart: document.getElementById('yearStart').value,
+                yearEnd: document.getElementById('yearEnd').value
+            };
+
+            try {
+                const response = await fetch('/api/v1/plots/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        description: description,
+                        plot_data: plotData
+                    })
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    alert('Session expired. Please login again');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageEl.style.background = '#efe';
+                    messageEl.style.color = '#3c3';
+                    messageEl.textContent = 'Plot saved successfully!';
+                    messageEl.style.display = 'block';
+
+                    setTimeout(() => {
+                        closeSavePlotModal();
+                    }, 1500);
+                } else {
+                    messageEl.style.background = '#fee';
+                    messageEl.style.color = '#c33';
+                    messageEl.textContent = data.detail || 'Failed to save plot';
+                    messageEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error saving plot:', error);
+                messageEl.style.background = '#fee';
+                messageEl.style.color = '#c33';
+                messageEl.textContent = 'Network error. Please try again.';
+                messageEl.style.display = 'block';
+            }
+        }
+
+        // Close save plot modal when clicking outside
+        document.getElementById('savePlotModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSavePlotModal();
             }
         });
 

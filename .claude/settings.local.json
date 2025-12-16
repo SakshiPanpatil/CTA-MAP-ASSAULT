@@ -14,7 +14,9 @@
       "Bash(findstr:*)",
       "Bash(mkdir:*)",
       "Bash(pkill:*)",
-      "Bash(copy viz_templates.html viz_templates_backup.html)"
+      "Bash(copy viz_templates.html viz_templates_backup.html)",
+      "Bash(pip install:*)",
+      "Bash(uvicorn:*)"
     ],
     "deny": [],
     "ask": []

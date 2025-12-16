@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login – CTA Incident Analytics</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0066B3 0%, #004A8F 50%, #C8102E 100%) fixed;
+            background-size: cover;
+            position: relative;
+        }
+
+        .bg-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .bg-shape:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            left: -150px;
+            animation-delay: 0s;
+        }
+
+        .bg-shape:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            bottom: -100px;
+            right: -100px;
+            animation-delay: 5s;
+        }
+
+        .bg-shape:nth-child(3) {
+            width: 900px;
+            height: 900px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) scale(1);
+                opacity: 0.05;
+            }
+            50% {
+                transform: translateY(-30px) scale(1.1);
+                opacity: 0.08;
+            }
+        }
+
+        .hero-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1.5rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo-container {
+            margin-bottom: 0.75rem;
+        }
+
+        .logo-container img {
+            width: min(220px, 60vw);
+            height: auto;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4));
+        }
+
+        .title {
+            color: #fff;
+            font-size: 1.7rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+            text-shadow: 0 2px 16px rgba(0,0,0,0.35);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 24px 24px 20px;
+            box-shadow: 0 20px 45px rgba(15,23,42,0.35);
+            text-align: left;
+            animation: fadeUp 0.7s ease-out;
+        }
+
+        .auth-card h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #0b2c67;
+        }
+
+        .auth-card p {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .form-control {
+            font-size: 0.9rem;
+            padding: 10px 11px;
+            border-radius: 10px;
+        }
+
+        .form-control:focus {
+            border-color: #0066B3;
+            box-shadow: 0 0 0 3px rgba(0,102,179,0.15);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 11px;
+            border-radius: 999px;
+            border: none;
+            background: linear-gradient(135deg, #0066B3, #004A8F);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 24px rgba(12,94,215,0.45);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        .btn-login:hover {
+            filter: brightness(1.05);
+            transform: translateY(-1px);
+            box-shadow: 0 12px 26px rgba(12,94,215,0.55);
+            color: #fff;
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+            box-shadow: 0 6px 16px rgba(12,94,215,0.45);
+            color: #fff;
+        }
+
+        .support-text {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #e5e7eb;
+            text-align: center;
+        }
+
+        .support-text a {
+            color: #ffffff;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .alert-message {
+            display: none;
+            font-size: 0.8rem;
+            padding: 8px 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .alert-success {
+            background: #ecfdf3;
+            color: #15803d;
+        }
+
+        .auth-card-header {
+            text-align: center;
+        }
+
+        .auth-card-header h2 {
+            margin-bottom: 4px;
+        }
+
+        .auth-card-header p {
+            margin-bottom: 16px;
+        }
+
+        .password-group .form-control {
+            border-radius: 10px 0 0 10px;
+        }
+
+        .password-toggle-btn {
+            border-radius: 0 10px 10px 0;
+            border: 1px solid #d1d5db;
+            border-left: none;
+            background-color: #f9fafb;
+            color: #6b7280;
+            padding-inline: 12px;
+        }
+
+        .password-toggle-btn:hover {
+            background-color: #eef2ff;
+            color: #004A8F;
+        }
+
+        .password-toggle-btn:focus {
+            box-shadow: none;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shape"></div>
+    <div class="bg-shape"></div>
+    <div class="bg-shape"></div>
+
+    <div class="hero-container">
+        <div class="logo-container">
+            <img src="{{ url_for('static', path='cta_logo.png') }}" alt="CTA Logo">
+        </div>
+        <h1 class="title">CTA Incident Analytics</h1>
+        <p class="subtitle">Secure analyst sign-in for saved plots &amp; reports</p>
+
+        <div class="auth-card">
+            <div class="auth-card-header">
+                <h2>Login</h2>
+                <p>Use your CTA analytics account to access personalized visualizations.</p>
+            </div>
+
+            <div id="error-message" class="alert-message alert-error"></div>
+            <div id="success-message" class="alert-message alert-success"></div>
+
+            <form id="login-form">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group password-group">
+                        <input type="password" id="password" name="password" class="form-control" required>
+                        <button type="button" class="btn password-toggle-btn" data-target="password" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login mt-1">Login</button>
+            </form>
+        </div>
+
+        <p class="support-text">
+            Don’t have an account yet?
+            <a href="/signup">Sign up</a>
+        </p>
+    </div>
+
+    <script>
+        document.querySelectorAll('.password-toggle-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (!input) return;
+
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    if (icon) {
+                        icon.classList.remove('bi-eye');
+                        icon.classList.add('bi-eye-slash');
+                    }
+                } else {
+                    input.type = 'password';
+                    if (icon) {
+                        icon.classList.remove('bi-eye-slash');
+                        icon.classList.add('bi-eye');
+                    }
+                }
+            });
+        });
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+
+            if (!username) {
+                errorMessage.textContent = 'Please enter your username.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (!password) {
+                errorMessage.textContent = 'Please enter your password.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('token_expires_at', data.expires_at);
+
+                    successMessage.textContent = 'Login successful! Redirecting...';
+                    successMessage.style.display = 'block';
+
+                    setTimeout(() => {
+                        window.location.href = '/cards';
+                    }, 1000);
+                } else {
+                    errorMessage.textContent = data.detail || 'Login failed';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Network error. Please try again.';
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

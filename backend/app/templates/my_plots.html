@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Saved Plots - CTA Incident Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            margin: 0;
+        }
+
+        .btn-back {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #764ba2;
+            color: white;
+        }
+
+        .plots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .plot-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .plot-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .plot-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .plot-card p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .plot-card .plot-meta {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        .plot-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-view:hover {
+            background: #764ba2;
+        }
+
+        .btn-delete {
+            padding: 8px 15px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .empty-state {
+            background: white;
+            padding: 60px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .empty-state h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>My Saved Plots</h1>
+            <a href="/cards" class="btn-back">Back to Dashboard</a>
+        </div>
+
+        <div id="loading" class="loading">Loading your plots...</div>
+        <div id="plots-container" class="plots-grid" style="display: none;"></div>
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h2>No saved plots yet</h2>
+            <p>Start creating visualizations and save them to see them here!</p>
+            <a href="/viz-templates" class="btn-view">Create Your First Plot</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadPlots() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/plots/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const plots = await response.json();
+                document.getElementById('loading').style.display = 'none';
+
+                if (plots.length === 0) {
+                    document.getElementById('empty-state').style.display = 'block';
+                } else {
+                    displayPlots(plots);
+                }
+            } catch (error) {
+                console.error('Error loading plots:', error);
+                document.getElementById('loading').innerHTML = '<p style="color: #e74c3c;">Error loading plots. Please try again.</p>';
+            }
+        }
+
+        function displayPlots(plots) {
+            const container = document.getElementById('plots-container');
+            container.style.display = 'grid';
+
+            plots.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            container.innerHTML = plots.map(plot => `
+                <div class="plot-card" data-plot-id="${plot.id}">
+                    <h3>${escapeHtml(plot.title)}</h3>
+                    <p>${escapeHtml(plot.description || 'No description')}</p>
+                    <div class="plot-meta">
+                        Created: ${new Date(plot.created_at).toLocaleDateString()} ${new Date(plot.created_at).toLocaleTimeString()}
+                    </div>
+                    <div class="plot-actions">
+                        <button class="btn-view" onclick="viewPlot(${plot.id})">View Plot</button>
+                        <button class="btn-delete" onclick="deletePlot(${plot.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function viewPlot(plotId) {
+            window.location.href = `/view-chart?plot_id=${plotId}`;
+        }
+
+        async function deletePlot(plotId) {
+            if (!confirm('Are you sure you want to delete this plot?')) {
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            try {
+                const response = await fetch(`/api/v1/plots/${plotId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    document.querySelector(`[data-plot-id="${plotId}"]`).remove();
+
+                    const remainingPlots = document.querySelectorAll('.plot-card').length;
+                    if (remainingPlots === 0) {
+                        document.getElementById('plots-container').style.display = 'none';
+                        document.getElementById('empty-state').style.display = 'block';
+                    }
+                } else {
+                    alert('Failed to delete plot');
+                }
+            } catch (error) {
+                console.error('Error deleting plot:', error);
+                alert('Error deleting plot. Please try again.');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadPlots();
+    </script>
+</body>
+</html>

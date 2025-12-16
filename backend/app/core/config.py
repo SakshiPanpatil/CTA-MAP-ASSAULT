@@ -29,9 +29,11 @@ class Settings(BaseSettings):
     # Local LLM (Ollama) configuration
     ollama_base_url: str = Field(default="http://localhost:11434", env="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="llama3.1:8b", env="OLLAMA_MODEL")
+    # Database configuration
+    database_url: str = Field(..., env="DATABASE_URL")
 
     class Config:
-        env_file = ".env"
+        env_file = str(BASE_DIR / ".env")
         env_file_encoding = "utf-8"
         extra = "ignore"  # Ignore legacy env vars like OPENAI_API_KEY
 

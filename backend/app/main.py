@@ -28,9 +28,21 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def root(request: Request) -> HTMLResponse:
-        """Landing page with CTA logo"""
+        """Landing page - redirect to login"""
         context = {"request": request}
-        return templates.TemplateResponse("index.html", context)
+        return templates.TemplateResponse("login.html", context)
+
+    @app.get("/login", response_class=HTMLResponse)
+    async def login_page(request: Request) -> HTMLResponse:
+        """Login page"""
+        context = {"request": request}
+        return templates.TemplateResponse("login.html", context)
+
+    @app.get("/signup", response_class=HTMLResponse)
+    async def signup_page(request: Request) -> HTMLResponse:
+        """Signup page"""
+        context = {"request": request}
+        return templates.TemplateResponse("signup.html", context)
 
     @app.get("/cards", response_class=HTMLResponse)
     async def cards(request: Request) -> HTMLResponse:
@@ -68,6 +80,12 @@ def create_app() -> FastAPI:
         """Chart Viewer - Display individual templates or saved plots"""
         context = {"request": request}
         return templates.TemplateResponse("view_chart.html", context)
+
+    @app.get("/my-plots", response_class=HTMLResponse)
+    async def my_plots(request: Request) -> HTMLResponse:
+        """My Saved Plots - View and manage saved visualizations"""
+        context = {"request": request}
+        return templates.TemplateResponse("my_plots.html", context)
 
     @app.get("/assaults.csv")
     async def assaults_csv() -> FileResponse:

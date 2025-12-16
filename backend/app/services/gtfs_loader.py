@@ -283,7 +283,7 @@ class GTFSDataLoader:
 @lru_cache
 def get_default_loader() -> GTFSDataLoader:
     """Return a GTFS loader configured for the default data directory."""
-    from backend.app.core.config import settings
+    from ..core.config import settings
 
     cache_candidates = {"routes", "stops"}
     return GTFSDataLoader(settings.data_directory, cache_tables=cache_candidates)
