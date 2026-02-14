@@ -1526,7 +1526,24 @@
 
         // Generate chart
         function generateChart(type, data, xField, yField, colorField) {
+            const sortByX = (arr) => {
+                return arr.slice().sort((a, b) => {
+                    const aNum = Number(a.x);
+                    const bNum = Number(b.x);
+                    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+                        return aNum - bNum;
+                    }
+                    return String(a.x).localeCompare(String(b.x));
+                });
+            };
+
             console.log('Generating chart:', { type, dataPoints: data.length, colorField });
+
+            const xIsIntegerLike = data.length > 0 && data.every(d => {
+                const n = Number(d.x);
+                return Number.isFinite(n) && Number.isInteger(n);
+            });
+            const formatX = (v) => (xIsIntegerLike ? String(v) : v);
 
             // Get the chart element
             const chartElement = document.getElementById('chart');
@@ -1564,6 +1581,10 @@
                 paper_bgcolor: '#ffffff',
                 hovermode: 'closest'
             };
+
+            if (xIsIntegerLike) {
+                layout.xaxis.type = 'category';
+            }
 
             let traces = [];
 
@@ -1687,13 +1708,19 @@
             }
             else {
                 // Standard 1D charts (bar, line, scatter, area)
+                if (type === 'line' || type === 'area' || type === 'scatter') {
+                    data = sortByX(data);
+                }
                 if (colorField) {
                     const colorGroups = [...new Set(data.map(d => d.color))];
                     colorGroups.forEach((group, idx) => {
-                        const groupData = data.filter(d => d.color === group);
+                        let groupData = data.filter(d => d.color === group);
+                        if (type === 'line' || type === 'area' || type === 'scatter') {
+                            groupData = sortByX(groupData);
+                        }
 
                         let trace = {
-                            x: groupData.map(d => d.x),
+                            x: groupData.map(d => formatX(d.x)),
                             y: groupData.map(d => d.y),
                             name: group,
                             hovertemplate: `${dropZones.xAxis.name}: %{x}<br>${dropZones.yAxis.name}: %{y}<br>Group: ${group}<extra></extra>`
@@ -1712,7 +1739,8 @@
                             trace.mode = 'lines+markers';
                             trace.line = {
                                 color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
-                                width: 3
+                                width: 3,
+                                shape: 'linear'
                             };
                             trace.marker = {
                                 color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
@@ -1742,7 +1770,7 @@
                     });
                 } else {
                     let trace = {
-                        x: data.map(d => d.x),
+                        x: data.map(d => formatX(d.x)),
                         y: data.map(d => d.y),
                         hovertemplate: `${dropZones.xAxis.name}: %{x}<br>${dropZones.yAxis.name}: %{y}<extra></extra>`
                     };
@@ -1758,7 +1786,7 @@
                     } else if (type === 'line') {
                         trace.type = 'scatter';
                         trace.mode = 'lines+markers';
-                        trace.line = { color: COLOR_PALETTE[0], width: 3 };
+                        trace.line = { color: COLOR_PALETTE[0], width: 3, shape: 'linear' };
                         trace.marker = {
                             color: COLOR_PALETTE[0],
                             size: 8,

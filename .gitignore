@@ -83,3 +83,5 @@ temp/
 !static/**/*.png
 !static/**/*.jpg
 !static/**/*.svg
+cta/
+main.txt
