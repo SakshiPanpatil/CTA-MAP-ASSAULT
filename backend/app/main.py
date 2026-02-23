@@ -75,6 +75,18 @@ def create_app() -> FastAPI:
         context = {"request": request}
         return templates.TemplateResponse("viz_templates.html", context)
 
+    @app.get("/future-trends", response_class=HTMLResponse)
+    async def future_trends(request: Request) -> HTMLResponse:
+        """Future Trends - Saved forecasts gallery and preset templates"""
+        context = {"request": request}
+        return templates.TemplateResponse("future_trends.html", context)
+
+    @app.get("/forecast-builder", response_class=HTMLResponse)
+    async def forecast_builder(request: Request) -> HTMLResponse:
+        """Forecast Builder - Drag-and-drop custom forecast builder"""
+        context = {"request": request}
+        return templates.TemplateResponse("forecast_builder.html", context)
+
     @app.get("/view-chart", response_class=HTMLResponse)
     async def view_chart(request: Request) -> HTMLResponse:
         """Chart Viewer - Display individual templates or saved plots"""

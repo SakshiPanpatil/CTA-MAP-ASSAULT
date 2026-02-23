@@ -1,0 +1,165 @@
+\documentclass[12pt,letterpaper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{times}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Internship Report - CTA Safety Analytics},
+    pdfpagemode=FullScreen,
+}
+
+% Header and footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{CTA Safety Analytics Platform}
+\lhead{Internship Report}
+\rfoot{Page \thepage}
+
+% Title formatting
+\titleformat{\section}
+{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}
+{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+% Document settings
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+\onehalfspacing
+
+\begin{document}
+
+% Title Page
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries Internship Report\\}
+    \vspace{0.5cm}
+    {\LARGE CTA Safety Analytics \& Mapping System Development\\}
+    \vspace{2cm}
+
+    {\Large
+    \textbf{Student Name:} Sakshi Balakrishna Panpatil\\
+    \vspace{0.3cm}
+    \textbf{University:} DePaul University\\
+    \vspace{0.3cm}
+    \textbf{Internship Duration:} 2 Weeks\\
+    \vspace{0.3cm}
+    \textbf{Project:} CTA Safety Analytics \& Mapping System\\
+    \vspace{0.3cm}
+    \textbf{Date:} December 2025\\
+    }
+
+    \vfill
+\end{titlepage}
+
+% Table of Contents
+\tableofcontents
+\newpage
+
+% Main Content
+\section{Detailed Description of Responsibilities}
+
+During my two-week internship, I served as a Full-Stack Software Developer and Data Analyst, responsible for developing a comprehensive safety analytics platform for the Chicago Transit Authority (CTA) system. My primary responsibility was building a web application that visualizes CTA routes and assault incidents on an interactive map while providing data analytics and forecasting capabilities.
+
+I developed the backend API using FastAPI, implementing RESTful endpoints that serve GTFS (General Transit Feed Specification) transit data, assault incident information, and analytics results. The API includes JWT-based authentication to secure access to sensitive incident data, with token generation and validation mechanisms that ensure only authorized users can access the system. I created database models using SQLAlchemy ORM to store assault incidents, user information, and cached transit data in PostgreSQL.
+
+A significant portion of my work involved integrating GTFS data, which required processing multiple CSV files containing routes, stops, trips, and geographic shapes. I implemented data caching mechanisms that precompute relationships between routes and stops in background threads, dramatically improving map rendering performance from several seconds to sub-second response times.
+
+On the data science side, I implemented SARIMAX time series forecasting models to predict future assault incidents. This involved preparing monthly incident time series, training statistical models with appropriate seasonal parameters, and generating 6-month forecasts with confidence intervals. I created visualization functions using Matplotlib to display trends, seasonal patterns, and forecast predictions.
+
+I also integrated a local LLM (Large Language Model) using Ollama to generate automated safety analysis reports. The system produces executive summaries, pattern analyses, and recommendations based on incident data. I developed both AI-powered and template-based analysis systems, with the template approach providing instant results through conditional logic that examines risk levels, injury rates, and temporal patterns.
+
+For the frontend, I built interactive web interfaces using HTML, CSS, JavaScript, and Leaflet.js. The main map interface displays CTA routes as colored polylines and incidents as clustered markers with severity-based color coding. I created additional pages for data visualization, including a drag-and-drop chart builder that allows non-technical users to create custom visualizations by selecting data dimensions and chart types.
+
+Finally, I implemented an automated PDF report generation system using ReportLab that compiles incident statistics, machine learning forecasts, embedded charts, and AI-generated insights into professional documents suitable for management review.
+
+\section{Major Tasks Accomplished}
+
+\textbf{Full-Stack Web Application Development:} I successfully built and deployed a complete web application with FastAPI backend and interactive frontend. The application includes five main interfaces: an interactive map view, a drag-and-drop visualization builder, a template chart gallery, a user login/signup system, and a saved plots management page. The backend serves over 15 API endpoints handling authentication, GTFS data queries, incident management, analytics generation, and report creation.
+
+\textbf{Machine Learning Forecasting System:} I developed a complete time series forecasting pipeline using SARIMAX models. The system processes assault incident data, creates monthly aggregations, handles missing values, trains models with optimized parameters, and generates 6-month predictions with 80\% confidence intervals. I implemented model validation using MAE, RMSE, and MAPE metrics to ensure forecast reliability. The forecasting system produces professional visualizations including trend analysis, seasonal decomposition plots showing trend/seasonal/residual components, and comparative charts between specific locations and system-wide patterns.
+
+\textbf{Interactive Geospatial Mapping:} I created an advanced mapping interface that renders thousands of CTA routes and stops with smooth performance. The map displays assault incidents with color-coded severity markers (green for low severity, yellow for medium, red for high) and uses marker clustering to handle dense incident areas. I implemented dynamic filtering allowing users to filter by date range, severity level, and specific routes. The interface includes interactive popups displaying detailed incident information and route details.
+
+\textbf{Automated Analytics and Reporting:} I built an end-to-end analytics system that generates comprehensive safety reports automatically. The system performs temporal pattern analysis identifying peak incident hours and days, calculates severity distributions and injury rates, conducts spatial clustering to identify high-risk routes and stops, and generates risk level assessments. The PDF report generation pipeline combines all these analyses with embedded charts and AI-generated narrative insights into professional documents.
+
+\textbf{Data Processing Pipeline:} I developed robust ETL (Extract, Transform, Load) workflows that clean and process raw CTA incident CSV data. The pipeline parses complex date formats, geocodes incident locations, correlates incidents with specific CTA routes and stops, calculates derived metrics like injury rates and severity scores, and caches processed data for fast API responses. The system includes comprehensive error handling and logging to manage data quality issues.
+
+\textbf{No-Code Visualization Builder:} I created an innovative interface allowing non-technical users to build custom charts through drag-and-drop functionality. Users can select from bar, line, pie, scatter, and heatmap chart types, choose data dimensions, apply filters and aggregations, preview visualizations in real-time, and save plots for future reference. This feature democratizes data access for safety analysts who lack programming skills.
+
+\section{Skills Learned on the Job}
+
+\textbf{Advanced Python Development:} I significantly enhanced my Python skills by working with modern frameworks and libraries. I learned FastAPI for building high-performance web APIs with automatic request validation and OpenAPI documentation. I mastered SQLAlchemy ORM for database interactions, understanding how to define models, relationships, and efficient queries. I became proficient with Pydantic for data validation using type hints. Working with Pandas and NumPy taught me efficient data manipulation techniques for large datasets.
+
+\textbf{Time Series Analysis and Forecasting:} This internship gave me hands-on experience with SARIMAX modeling that went far beyond classroom theory. I learned how to select appropriate model parameters by analyzing autocorrelation patterns, handle seasonal components in data, perform differencing to achieve stationarity, validate models using train-test splits, and interpret forecast accuracy metrics. I also learned how to communicate statistical uncertainty to stakeholders through confidence intervals and visual presentations.
+
+\textbf{API Design and Development:} I gained practical experience in RESTful API design principles. I learned resource-based URL structuring, proper HTTP method usage (GET, POST, PUT, DELETE), meaningful status code implementation, request/response schema validation, and API versioning strategies. I implemented JWT authentication including token generation, validation, expiration handling, and secure storage. I also learned CORS configuration for handling cross-origin requests from the frontend.
+
+\textbf{Geospatial Data and Web Mapping:} Working with GTFS data and Leaflet.js taught me geospatial concepts. I learned latitude/longitude coordinate systems, GeoJSON format for representing geographic features, polyline rendering for route visualization, marker clustering algorithms for dense point data, and map interaction handling for clicks, zooms, and pans. Understanding spatial indexing helped me optimize geographic queries.
+
+\textbf{Frontend Development:} I improved my JavaScript skills through building interactive interfaces. I learned DOM manipulation for dynamic content updates, event handling for user interactions, asynchronous programming with Fetch API for backend communication, JSON data parsing and transformation, and integration with third-party libraries. I became comfortable with modern JavaScript patterns like promises and async/await.
+
+\textbf{Machine Learning Deployment:} Beyond just training models, I learned how to deploy machine learning in production environments. This includes serializing trained models, handling real-time prediction requests, managing model versions, monitoring performance metrics over time, and presenting predictions with appropriate uncertainty quantification. These skills bridge theoretical data science and practical engineering.
+
+\textbf{Database Design:} I developed skills in designing efficient database schemas. I learned entity-relationship modeling, database normalization to third normal form, primary and foreign key relationships, index creation for query optimization, and database migration management using Alembic. Understanding transaction management and ACID properties helped me implement proper database session handling.
+
+\textbf{LLM Integration and Prompt Engineering:} I gained practical experience integrating local language models using Ollama. I learned prompt engineering techniques for getting structured outputs, JSON response parsing with error handling, implementing fallback strategies when AI generation fails, and balancing AI-generated content with deterministic template-based approaches for reliability and performance.
+
+\textbf{Professional Development Practices:} I learned version control workflows using Git, including meaningful commit messages, branch management, and proper use of .gitignore files. I practiced writing comprehensive documentation for APIs and deployment procedures. I implemented structured logging for debugging and monitoring. I learned environment-based configuration management to keep secrets secure and deployments flexible.
+
+\section{How My Education at DePaul Helped Me at My Internship}
+
+My DePaul coursework provided essential foundations that directly enabled my internship success. The database systems courses taught me relational theory, normalization, and SQL that I immediately applied when designing schemas for assault incidents and GTFS transit data. Understanding entity-relationship modeling helped me structure complex relationships between routes, stops, trips, and incidents. The transaction management concepts helped me implement proper database session handling.
+
+DePaul's data science curriculum gave me the statistical foundation for SARIMAX forecasting. Time series analysis courses taught me concepts like stationarity, autocorrelation, and seasonal decomposition that I applied when configuring model parameters. Statistics courses covering hypothesis testing and confidence intervals helped me validate forecasts and communicate uncertainty. Data visualization courses taught me principles for creating clear, informative charts with proper axes, legends, and color schemes.
+
+Web development courses introduced HTML, CSS, JavaScript, and client-server architecture that formed the foundation for building the FastAPI backend and interactive frontends. I applied RESTful API design principles and MVC architecture separation learned in class. Software engineering courses emphasizing modular design and separation of concerns directly influenced my project structure with separate directories for API endpoints, data models, business logic services, and configuration.
+
+Algorithm design courses developed my computational thinking for optimization challenges. Understanding Big O notation helped me recognize that precomputing route-to-stop mappings would convert O(n*m) lookups to O(1) cached retrievals, dramatically improving performance. This algorithmic mindset extended to designing efficient data aggregation pipelines.
+
+Object-oriented programming courses enabled me to write clean, maintainable code using classes, inheritance, and composition. Understanding OOP principles helped me effectively use FastAPI's dependency injection and SQLAlchemy's ORM patterns. Machine learning courses introduced model training, validation, and evaluation metrics that I applied in the forecasting pipeline. Concepts like train-test splitting and avoiding overfitting directly informed my implementation.
+
+Computer security courses made me conscious of best practices I implemented throughout the project. I ensured JWT secrets and database credentials are loaded from environment variables and never committed to version control. I implemented proper authentication on sensitive endpoints, input sanitization to prevent injection attacks, and least-privilege database access patterns. The ethics coursework made me thoughtful about responsible handling of sensitive assault incident data.
+
+\section{How Will This Internship Help Me Satisfy My Career Goals}
+
+This internship significantly advances my career goals in data science and software engineering. The CTA Safety Analytics platform serves as a sophisticated portfolio piece demonstrating full-stack development, data science expertise, and ability to deliver production systems. Unlike simplified academic projects, this real-world application showcases skills in handling messy data, integrating multiple technologies, implementing machine learning at scale, and creating user-focused interfaces.
+
+When interviewing for data scientist or software engineer positions, I can demonstrate the live application, explain architectural decisions, walk through the forecasting methodology, and discuss challenges I overcame. This concrete evidence of technical competence is far more compelling than academic transcripts alone.
+
+The internship provided exposure to industry-standard technologies that make me immediately productive in professional environments. Experience with FastAPI, PostgreSQL, Docker concepts, API versioning, and JWT authentication directly matches what recruiters seek. The combination of REST API development, database design, and cloud deployment awareness positions me well for modern tech roles.
+
+For my goal of working as a data scientist in urban analytics and public sector applications, this internship provided direct domain experience. Working with real transit data to solve actual safety challenges demonstrates the complete data science workflow: data collection and cleaning, exploratory analysis, statistical modeling, visualization, and communicating insights to stakeholders. The forecasting work specifically addresses predictive analytics for operational planning, a highly valued capability in data science roles.
+
+The geospatial analytics experience opens opportunities in transportation, logistics, urban planning, and location-based services. The combination of geospatial capabilities with machine learning and software engineering makes me attractive for roles requiring cross-disciplinary expertise. This specialization in civic technology aligns with my passion for using data science to improve public services.
+
+Beyond technical skills, the internship developed crucial soft skills. Through creating the PDF reporting system and AI-generated insights, I practiced translating statistical results into clear narratives for different audiences. I learned to write actionable recommendations with concrete implementation steps and present technical work in accessible formats. These communication skills differentiate senior data scientists from junior ones.
+
+The experience also clarified my interest in graduate studies. The forecasting work revealed depths in time series analysis and causal inference I want to explore further. I now have concrete research questions around improving prediction accuracy, understanding spatial-temporal patterns, and evaluating intervention effectiveness that could form graduate research foundations.
+
+Taking ownership of the entire project lifecycle---from requirements through deployment---demonstrates readiness for senior roles. Making architectural decisions, prioritizing features, managing technical debt, and communicating progress shows I can define problems, design solutions, and deliver results independently. This project leadership experience is invaluable.
+
+Successfully delivering this complex system has given me confidence in tackling challenging technical problems. I proved I can learn new technologies quickly, debug complex issues, design scalable architectures, and ship working software. This confidence is essential for ambitious projects, assertive interviewing, and effective negotiation for roles aligned with my goals.
+
+\section{Conclusion}
+
+This two-week internship developing the CTA Safety Analytics \& Mapping System bridged my academic preparation at DePaul University with professional practice in software engineering and data science. I delivered a production-ready platform integrating full-stack web development, database design, machine learning forecasting, geospatial visualization, and automated reporting. The technical skills I developed, combined with project ownership experience and stakeholder communication practice, position me excellently for pursuing careers in data science and civic technology. I'm grateful for the opportunity to apply my education to a meaningful public safety problem and excited to build on this foundation professionally.
+
+\vspace{1cm}
+\noindent\textbf{Word Count:} Approximately 2,000 words
+
+\end{document}

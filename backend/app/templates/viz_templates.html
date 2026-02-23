@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTA Incident Plot Gallery</title>
+    <title>CTA Bus Incident Plot Gallery</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -665,7 +665,7 @@
             </button>
         </div>
         <div class="header-text">
-            <h1 id="viz-title">CTA Incident Plot Gallery</h1>
+            <h1 id="viz-title">CTA Bus Incident Plot Gallery</h1>
             <p id="viz-subtitle">Review saved analyst plots and CTA-standard templates</p>
         </div>
     </div>
@@ -679,7 +679,7 @@
         <div id="myPlotsSection">
             <h2 class="section-title">My Plots</h2>
             <p class="section-subtitle">
-                Saved visualizations you created in the Incident Visualization Builder.
+                Saved visualizations you created in the Bus Incident Visualization Builder.
             </p>
             <div id="myPlotsGrid" class="templates-grid"></div>
         </div>
@@ -796,9 +796,9 @@
         const templates = [
             {
                 id: 1,
-                title: "Incident Trends Over Time",
+                title: "Bus Incident Trends Over Time",
                 icon: "bi-graph-up",
-                desc: "Yearly incident frequency from 2016 to 2025",
+                desc: "Yearly bus incident frequency from 2016 to 2025",
                 x: "Year",
                 y: "count",
                 chartType: "line",
@@ -807,9 +807,9 @@
             },
             {
                 id: 2,
-                title: "Hourly Incident Distribution",
+                title: "Hourly Bus Incident Distribution",
                 icon: "bi-clock-history",
-                desc: "Which hours of the day have most incidents",
+                desc: "Which hours of the day have most bus incidents",
                 x: "HourDisplay",
                 y: "count",
                 chartType: "bar",
@@ -819,9 +819,9 @@
             },
             {
                 id: 3,
-                title: "Incident Types Breakdown",
+                title: "Bus Incident Types Breakdown",
                 icon: "bi-pie-chart-fill",
-                desc: "Distribution of different incident event types",
+                desc: "Distribution of different bus incident event types",
                 x: "Event Type",
                 y: "count",
                 chartType: "pie",
@@ -832,7 +832,7 @@
                 id: 4,
                 title: "Location Type Analysis",
                 icon: "bi-geo-alt",
-                desc: "Where incidents occur most frequently",
+                desc: "Where bus incidents occur most frequently",
                 x: "Location Type",
                 y: "count",
                 chartType: "bar",
@@ -841,7 +841,7 @@
             },
             {
                 id: 5,
-                title: "Monthly Incident Patterns",
+                title: "Monthly Bus Incident Patterns",
                 icon: "bi-calendar3",
                 desc: "Seasonal trends throughout the year",
                 x: "Month",
@@ -854,7 +854,7 @@
                 id: 6,
                 title: "Day of Week Distribution",
                 icon: "bi-calendar-week",
-                desc: "Which days have highest incident rates",
+                desc: "Which days have highest bus incident rates",
                 x: "DayOfWeek",
                 y: "count",
                 chartType: "bar",
@@ -863,9 +863,9 @@
             },
             {
                 id: 7,
-                title: "Weather Impact on Incidents",
+                title: "Weather Impact on Bus Incidents",
                 icon: "bi-cloud-sun",
-                desc: "How weather conditions correlate with incidents",
+                desc: "How weather conditions correlate with bus incidents",
                 x: "Weather",
                 y: "count",
                 chartType: "pie",
@@ -876,7 +876,7 @@
                 id: 8,
                 title: "Lighting Conditions Analysis",
                 icon: "bi-brightness-high",
-                desc: "Daylight vs dark incident distribution",
+                desc: "Daylight vs dark bus incident distribution",
                 x: "Lighting",
                 y: "count",
                 chartType: "pie",
@@ -931,7 +931,7 @@
             },
             {
                 id: 13,
-                title: "Incident Type by Event Group",
+                title: "Bus Incident Type by Event Group",
                 icon: "bi-funnel",
                 desc: "Detailed breakdown of event type groups",
                 x: "Event Type Group",
@@ -968,7 +968,7 @@
                 id: 16,
                 title: "Hour vs Day of Week Heatmap",
                 icon: "bi-grid-3x3-gap",
-                desc: "2D heatmap of incident concentration",
+                desc: "2D heatmap of bus incident concentration",
                 x: "DayOfWeek",
                 y: "HourDisplay",
                 z: "count",
@@ -981,7 +981,7 @@
                 id: 17,
                 title: "Year-over-Year Comparison",
                 icon: "bi-graph-down",
-                desc: "Comparing incident counts across years",
+                desc: "Comparing bus incident counts across years",
                 x: "Month",
                 y: "count",
                 color: "Year",
@@ -993,7 +993,7 @@
                 id: 18,
                 title: "Average Injuries per Event Type",
                 icon: "bi-graph-up-arrow",
-                desc: "Which incident types cause most injuries",
+                desc: "Which bus incident types cause most injuries",
                 x: "Event Type",
                 y: "Total Injuries",
                 aggregation: "avg",
@@ -1005,7 +1005,7 @@
                 id: 19,
                 title: "Fatalities by Event Type",
                 icon: "bi-exclamation-octagon",
-                desc: "Most deadly incident categories",
+                desc: "Most deadly bus incident categories",
                 x: "Event Type",
                 y: "Total Fatalities",
                 aggregation: "sum",
@@ -1015,7 +1015,7 @@
             },
             {
                 id: 20,
-                title: "Seasonal Incident Distribution",
+                title: "Seasonal Bus Incident Distribution",
                 icon: "bi-calendar4-range",
                 desc: "Quarterly patterns across all years",
                 x: "Quarter",
@@ -1195,7 +1195,10 @@
                 if (response.ok) {
                     const dbPlots = await response.json();
                     // Convert database plots to the format expected by renderMyPlots
-                    savedPlots = dbPlots.map(plot => ({
+                    // Exclude forecast plots (Card 2) — they belong to /future-trends
+                    savedPlots = dbPlots
+                        .filter(plot => plot.plot_data?.type !== 'forecast_custom')
+                        .map(plot => ({
                         id: `db_${plot.id}`,
                         title: plot.title,
                         desc: plot.description,
@@ -1250,7 +1253,7 @@
                     </div>
                     <div class="template-title">Templates Library</div>
                     <div class="template-desc">
-                        Open all CTA-standard incident analysis templates for quick, one-click chart setups.
+                        Open all CTA-standard bus incident analysis templates for quick, one-click chart setups.
                     </div>
                     <span class="data-type-badge categorical">Templates</span>
                 </div>
@@ -1927,7 +1930,7 @@
                     ],
                     colorbar: {
                         title: {
-                            text: 'Incident Count',
+                            text: 'Bus Incident Count',
                             side: 'right',
                             font: { size: 13, family: 'Inter, sans-serif', color: '#2d3748' }
                         },
@@ -1935,7 +1938,7 @@
                         len: 0.75,
                         tickfont: { size: 11, family: 'Inter, sans-serif' }
                     },
-                    hovertemplate: '<b>%{x}</b><br>Hour: %{y}</b><br><b>Incidents: %{z}</b><extra></extra>',
+                    hovertemplate: '<b>%{x}</b><br>Hour: %{y}</b><br><b>Bus Incidents: %{z}</b><extra></extra>',
                     hoverlabel: {
                         bgcolor: 'white',
                         bordercolor: '#e2e8f0',
@@ -2401,8 +2404,8 @@
                 if (chartView) chartView.classList.remove('active');
                 const titleEl = document.getElementById('viz-title');
                 const subtitleEl = document.getElementById('viz-subtitle');
-                if (titleEl) titleEl.textContent = 'CTA Incident Templates';
-                if (subtitleEl) subtitleEl.textContent = 'Select a template to explore CTA incident patterns';
+                if (titleEl) titleEl.textContent = 'CTA Bus Incident Templates';
+                if (subtitleEl) subtitleEl.textContent = 'Select a template to explore CTA bus incident patterns';
             } else {
                 if (mySection) mySection.style.display = '';
                 if (templatesSection) templatesSection.style.display = 'none';

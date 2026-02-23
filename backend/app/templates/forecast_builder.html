@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTA Forecast Builder</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --cta-blue: #0066B3;
+            --cta-blue-dark: #004A8F;
+            --cta-red: #C8102E;
+            --bg-light: #f8f9fa;
+            --border: #dee2e6;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        /* ── Full-screen 3-col grid ── */
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 320px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* ── Header ── */
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-blue-dark));
+            color: white;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions { display: flex; gap: 12px; }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-light { background: rgba(255,255,255,0.2); color: white; }
+        .btn-light:hover { background: rgba(255,255,255,0.3); }
+        .btn-danger { background: var(--cta-red); color: white; }
+        .btn-danger:hover { background: #a00d24; }
+
+        /* ── Left panel ── */
+        .fields-panel {
+            background: white;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .field-item {
+            background: var(--bg-light);
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .field-item:hover {
+            background: #e9ecef;
+            border-color: var(--cta-blue);
+            transform: translateX(2px);
+        }
+
+        .field-item:active { cursor: grabbing; }
+
+        .field-icon { width: 8px; height: 8px; border-radius: 2px; }
+        .field-icon.measure   { background: var(--cta-red); }
+        .field-icon.dimension { background: var(--cta-blue); }
+
+        /* ── Center canvas ── */
+        .canvas-panel {
+            background: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .drop-zones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 16px;
+            background: #f1f3f5;
+            flex-shrink: 0;
+        }
+
+        .drop-zone {
+            background: white;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .drop-zone.drag-over {
+            background: #e7f5ff;
+            border-color: var(--cta-blue);
+            border-style: solid;
+        }
+
+        .drop-zone.filled {
+            background: linear-gradient(135deg, var(--cta-blue), var(--cta-blue-dark));
+            border-style: solid;
+            border-color: var(--cta-blue-dark);
+        }
+
+        .drop-zone-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .drop-zone.filled .drop-zone-label { color: rgba(255,255,255,0.8); }
+
+        .drop-zone-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            display: none;
+        }
+
+        .drop-zone.filled .drop-zone-value { display: block; }
+
+        .drop-zone-placeholder { font-size: 0.75rem; color: var(--text-muted); }
+        .drop-zone.filled .drop-zone-placeholder { display: none; }
+
+        .remove-field {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .drop-zone.filled .remove-field { display: flex; }
+        .remove-field:hover { background: rgba(255,255,255,0.35); }
+
+        /* ── Chart area ── */
+        .chart-container {
+            flex: 1;
+            padding: 16px;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--cta-blue);
+            flex: 1;
+        }
+
+        .model-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .model-pill {
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .pill-model { background: #e3f2fd; color: #1565c0; }
+        .pill-mape  { background: #e8f5e9; color: #2e7d32; }
+        .pill-mae   { background: #fff3e0; color: #e65100; }
+
+        #chart {
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── Empty state ── */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 16px;
+            opacity: 0.25;
+        }
+
+        .empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; }
+        .empty-state p  { font-size: 0.875rem; }
+
+        /* ── Spinner ── */
+        .spinner-overlay {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .spinner-overlay.active { display: flex; }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--bg-light);
+            border-top-color: var(--cta-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .spinner-overlay p { font-size: 0.9rem; font-weight: 500; }
+
+        /* ── Error state ── */
+        .error-state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--cta-red);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .error-state.active { display: flex; }
+        .error-state p { margin-top: 8px; font-weight: 600; font-size: 0.9rem; }
+
+        /* ── Right panel ── */
+        .controls-panel {
+            background: white;
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .control-group { margin-bottom: 24px; }
+
+        .control-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--cta-blue);
+            box-shadow: 0 0 0 3px rgba(0,102,179,0.1);
+        }
+
+        /* ── Model info card in right panel ── */
+        .model-info-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .model-info-card .model-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--cta-blue);
+            margin-bottom: 8px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px; }
+        .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--cta-blue); }
+
+        /* ── Saved forecasts in right panel ── */
+        .saved-plot-item {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .saved-plot-item:hover {
+            background: #e7f5ff;
+            border-color: var(--cta-blue);
+            transform: translateX(2px);
+        }
+
+        .saved-plot-title { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; padding-right: 24px; }
+        .saved-plot-desc  { font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; }
+        .saved-plot-date  { font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; }
+
+        .saved-plot-delete {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255,0,0,0.08);
+            color: var(--cta-red);
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .saved-plot-item:hover .saved-plot-delete { opacity: 1; }
+        .saved-plot-delete:hover { background: var(--cta-red); color: white; }
+
+        .empty-saved-plots {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* ── Full-page loading overlay ── */
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-light); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ── Save Forecast Modal ── */
+        .save-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        .save-overlay.active { display: flex; }
+
+        .save-card {
+            background: white;
+            border-radius: 14px;
+            padding: 28px 32px;
+            width: 420px;
+            max-width: 92vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: saveSlideUp 0.25s ease;
+        }
+
+        @keyframes saveSlideUp {
+            from { transform: translateY(24px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        .save-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .save-card-header h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--cta-blue);
+            margin: 0;
+        }
+
+        .save-card-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+            transition: color 0.15s;
+        }
+        .save-card-close:hover { color: var(--cta-red); }
+
+        .save-card-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+
+        .save-field-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+        }
+
+        .save-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            margin-bottom: 14px;
+            transition: border-color 0.2s;
+        }
+        .save-input:focus { outline: none; border-color: var(--cta-blue); }
+
+        .save-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.2s;
+        }
+        .save-textarea:focus { outline: none; border-color: var(--cta-blue); }
+
+        .save-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 18px;
+        }
+
+        .save-word-hint { font-size: 0.75rem; color: var(--text-muted); }
+
+        .save-actions { display: flex; gap: 10px; }
+
+        .btn-save-primary {
+            background: var(--cta-blue);
+            color: white;
+            padding: 9px 22px;
+            border: none;
+            border-radius: 7px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .btn-save-primary:hover { background: var(--cta-blue-dark); }
+
+        .btn-save-secondary {
+            background: var(--bg-light);
+            color: var(--text-muted);
+            padding: 9px 18px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-save-secondary:hover { background: #e9ecef; color: var(--text-dark); }
+    </style>
+</head>
+<body>
+    <script>
+        (function() {
+            const token = localStorage.getItem('access_token');
+            if (!token) { window.location.href = '/login'; return; }
+            const expiresAt = localStorage.getItem('token_expires_at');
+            if (expiresAt && new Date(expiresAt) <= new Date()) {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('token_expires_at');
+                window.location.href = '/login';
+            }
+        })();
+    </script>
+
+    <div class="loading" id="loading" style="display:none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p style="margin-top:16px;color:var(--text-muted);">Running forecast models…</p>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <i class="bi bi-graph-up-arrow"></i>
+                <span>Forecast Builder</span>
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-light" id="saveForecastBtn" onclick="saveForecast()" disabled>
+                    <i class="bi bi-bookmark-plus"></i>
+                    <span>Save Forecast</span>
+                </button>
+                <button class="btn btn-light" id="downloadBtn" onclick="downloadChart()" disabled>
+                    <i class="bi bi-download"></i>
+                    <span>Download PNG</span>
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    <i class="bi bi-x-circle"></i>
+                    <span>Clear</span>
+                </button>
+                <button class="btn btn-light" onclick="window.location.href='/future-trends'">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Back</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Left panel: field list -->
+        <div class="fields-panel">
+            <div class="panel-title">
+                <i class="bi bi-graph-up" style="margin-right:6px;"></i>
+                <span>Forecast Metrics</span>
+            </div>
+            <div id="metricFields"></div>
+
+            <div class="panel-title" style="margin-top:24px;">
+                <i class="bi bi-funnel" style="margin-right:6px;"></i>
+                <span>Optional Filters</span>
+            </div>
+            <div id="filterFields"></div>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;line-height:1.5;">
+                Drag a metric to the Metric zone — the best model runs automatically.
+                Optionally drag a filter to narrow the forecast series.
+            </p>
+        </div>
+
+        <!-- Center panel: drop zones + chart -->
+        <div class="canvas-panel">
+            <div class="drop-zones">
+                <div class="drop-zone" id="metricZone">
+                    <span class="drop-zone-label">Metric</span>
+                    <span class="drop-zone-placeholder">Drop a metric here</span>
+                    <span class="drop-zone-value" id="metricZoneValue"></span>
+                    <button class="remove-field" onclick="clearMetricZone()">×</button>
+                </div>
+                <div class="drop-zone" id="filterZone">
+                    <span class="drop-zone-label">Filter (Optional)</span>
+                    <span class="drop-zone-placeholder">Drop a filter column here</span>
+                    <span class="drop-zone-value" id="filterZoneValue"></span>
+                    <button class="remove-field" onclick="clearFilterZone()">×</button>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <!-- Empty state -->
+                <div class="empty-state" id="emptyState">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <h3>Start Building Your Forecast</h3>
+                    <p>Drag a metric from the left panel and drop it onto the Metric zone</p>
+                </div>
+
+                <!-- Spinner -->
+                <div class="spinner-overlay" id="spinnerOverlay">
+                    <div class="spinner"></div>
+                    <p id="spinnerMsg">Running forecast models… this may take 15–30 seconds</p>
+                </div>
+
+                <!-- Error -->
+                <div class="error-state" id="errorState">
+                    <i class="bi bi-exclamation-triangle" style="font-size:2.5rem;"></i>
+                    <p id="errorMsg"></p>
+                </div>
+
+                <!-- Chart -->
+                <div id="chartHeader" class="chart-header" style="display:none;">
+                    <span class="chart-title" id="chartTitle"></span>
+                    <div class="model-pills" id="modelPills"></div>
+                </div>
+                <div id="chart" style="display:none;flex:1;min-height:0;"></div>
+            </div>
+        </div>
+
+        <!-- Right panel: settings + model info + saved forecasts -->
+        <div class="controls-panel">
+
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-sliders"></i>
+                    <span>Forecast Settings</span>
+                </label>
+
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text-dark);margin-bottom:6px;">Data Since Year</div>
+                    <select id="cfSince" onchange="rerunIfReady()">
+                        <option value="2016">2016</option>
+                        <option value="2017">2017</option>
+                        <option value="2018">2018</option>
+                        <option value="2019">2019</option>
+                        <option value="2020">2020</option>
+                        <option value="2021">2021</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text-dark);margin-bottom:6px;">Forecast Horizon</div>
+                    <select id="cfPeriods" onchange="rerunIfReady()">
+                        <option value="6">6 Months</option>
+                        <option value="12" selected>12 Months</option>
+                        <option value="18">18 Months</option>
+                        <option value="24">24 Months</option>
+                    </select>
+                </div>
+
+                <div id="cfFilterValGroup" style="display:none;">
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text-dark);margin-bottom:6px;">Filter Value</div>
+                    <select id="cfFilterVal" onchange="rerunIfReady()">
+                        <option value="">All</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group" id="modelInfoSection" style="display:none;">
+                <label class="control-label">
+                    <i class="bi bi-cpu"></i>
+                    <span>Best Model</span>
+                </label>
+                <div class="model-info-card">
+                    <div class="model-name" id="modelName">—</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">MAPE</div>
+                            <div class="stat-value" id="modelMape">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">MAE</div>
+                            <div class="stat-value" id="modelMae">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">
+                    <i class="bi bi-star-fill"></i>
+                    <span>My Saved Forecasts</span>
+                </label>
+                <div id="savedForecastsList" style="max-height:320px;overflow-y:auto;">
+                    <div class="empty-saved-plots">Loading…</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Save Forecast Modal -->
+    <div class="save-overlay" id="saveOverlay">
+        <div class="save-card">
+            <div class="save-card-header">
+                <h2>Save Forecast</h2>
+                <button class="save-card-close" onclick="closeSaveModal()">×</button>
+            </div>
+            <p class="save-card-subtitle">Give this forecast a clear title and a short description.</p>
+            <div class="save-field-label">Title</div>
+            <input id="saveTitleInput" class="save-input" type="text" maxlength="120"
+                placeholder="e.g., Rider Injuries — Security Events Forecast">
+            <div class="save-field-label">Description <span style="font-weight:400;">(max 15 words)</span></div>
+            <textarea id="saveDescInput" class="save-textarea"
+                placeholder="Briefly describe what this forecast shows…"></textarea>
+            <div class="save-card-footer">
+                <span class="save-word-hint" id="saveWordHint">0 / 15 words</span>
+                <div class="save-actions">
+                    <button class="btn-save-secondary" onclick="closeSaveModal()">Cancel</button>
+                    <button class="btn-save-primary" onclick="confirmSave()">Save Forecast</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Field definitions ─────────────────────────────────────────────────────
+        const METRIC_FIELDS = [
+            // Incident volume
+            { name: 'Bus Incident Count',                    field: 'count' },
+            // Injury metrics
+            { name: 'Total Injuries',                    field: 'Total Injuries' },
+            { name: 'Total Serious Injuries',            field: 'Total Serious Injuries' },
+            { name: 'Rider Injuries',                    field: 'Transit Vehicle Rider Injuries' },
+            { name: 'Rider Serious Injuries',            field: 'Transit Vehicle Rider Serious Injuries' },
+            { name: 'Operator Injuries',                 field: 'Transit Vehicle Operator Injuries' },
+            { name: 'Operator Serious Injuries',         field: 'Transit Vehicle Operator Serious Injuries' },
+            { name: 'Non-Op Employee Injuries',          field: 'Non-Operator Transit Employee Injuries' },
+            { name: 'Non-Op Employee Serious Injuries',  field: 'Non-Operator Transit Employee Serious Injuries' },
+            { name: 'Waiting / Leaving Injuries',        field: 'People Waiting or Leaving Injuries' },
+            // Fatality metrics
+            { name: 'Total Fatalities',                  field: 'Total Fatalities' },
+            { name: 'Rider Fatalities',                  field: 'Transit Vehicle Rider Fatalities' },
+            { name: 'Operator Fatalities',               field: 'Transit Vehicle Operator Fatalities' },
+            { name: 'Waiting / Leaving Fatalities',      field: 'People Waiting or Leaving Fatalities' },
+        ];
+
+        const FILTER_FIELDS = [
+            { name: 'Event Category',                  field: 'Event Category' },
+            { name: 'Event Type',                      field: 'Event Type' },
+            { name: 'Event Type Group',                field: 'Event Type Group' },
+            { name: 'Location Type',                   field: 'Location Type' },
+            { name: 'Rail / Bus / Ferry',              field: 'Rail/Bus/Ferry' },
+            { name: 'Safety / Security',               field: 'Safety/Security' },
+            { name: 'Transit Worker Type',             field: 'Transit Worker Type' },
+            { name: 'Assault Detail Type',             field: 'Transit Worker Assault Detail Type' },
+            { name: 'Intentional',                     field: 'Intentional (Y/N)' },
+            { name: 'Weather',                         field: 'Weather' },
+            { name: 'Lighting',                        field: 'Lighting' },
+        ];
+
+        // ── Auth ──────────────────────────────────────────────────────────────────
+        function getAuthHeaders() {
+            const t = localStorage.getItem('access_token');
+            return t ? { 'Authorization': `Bearer ${t}` } : {};
+        }
+
+        function handleAuthError() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('token_expires_at');
+            window.location.href = '/login';
+        }
+
+        function isAuthError(s) { return s === 401 || s === 403; }
+
+        // ── State ─────────────────────────────────────────────────────────────────
+        let selectedMetric      = null;
+        let selectedMetricLabel = null;
+        let selectedFilterCol   = null;
+        let _lastData           = null;
+        let _running            = false;
+
+        // ── Build left panel ──────────────────────────────────────────────────────
+        function buildFields() {
+            const mc = document.getElementById('metricFields');
+            const fc = document.getElementById('filterFields');
+
+            let lastGroup = null;
+            const GROUP_LABELS = {
+                'count':                                         'Volume',
+                'Total Injuries':                               'Injuries',
+                'Total Fatalities':                             'Fatalities',
+            };
+
+            METRIC_FIELDS.forEach(m => {
+                // Insert a subtle group divider when category changes
+                const group = m.field === 'count' ? 'Volume'
+                    : m.field.includes('Fatalit') ? 'Fatalities'
+                    : 'Injuries';
+                if (group !== lastGroup) {
+                    const sep = document.createElement('div');
+                    sep.style.cssText = 'font-size:0.68rem;font-weight:700;text-transform:uppercase;color:#adb5bd;letter-spacing:0.4px;margin:10px 0 4px;padding-left:2px;';
+                    sep.textContent = group;
+                    mc.appendChild(sep);
+                    lastGroup = group;
+                }
+                const div = document.createElement('div');
+                div.className = 'field-item';
+                div.draggable = true;
+                div.dataset.metric = m.field;
+                div.innerHTML = `<span class="field-icon measure"></span>${m.name}`;
+                mc.appendChild(div);
+            });
+
+            FILTER_FIELDS.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'field-item';
+                div.draggable = true;
+                div.dataset.filterCol = f.field;
+                div.innerHTML = `<span class="field-icon dimension"></span>${f.name}`;
+                fc.appendChild(div);
+            });
+        }
+
+        // ── Drag-and-drop ─────────────────────────────────────────────────────────
+        function setupDragDrop() {
+            const metricZone = document.getElementById('metricZone');
+            const filterZone = document.getElementById('filterZone');
+
+            document.querySelectorAll('.field-item').forEach(item => {
+                item.addEventListener('dragstart', e => {
+                    if (item.dataset.metric) {
+                        e.dataTransfer.setData('type',   'metric');
+                        e.dataTransfer.setData('metric', item.dataset.metric);
+                    } else if (item.dataset.filterCol) {
+                        e.dataTransfer.setData('type',      'filter');
+                        e.dataTransfer.setData('filterCol', item.dataset.filterCol);
+                    }
+                    e.dataTransfer.setData('label', item.textContent.trim());
+                });
+            });
+
+            function setupZone(zone, typeExpected, onDrop) {
+                ['dragover','dragenter'].forEach(ev =>
+                    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('drag-over'); })
+                );
+                zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    if (e.dataTransfer.getData('type') !== typeExpected) return;
+                    onDrop(e.dataTransfer, e.dataTransfer.getData('label'));
+                });
+            }
+
+            setupZone(metricZone, 'metric', (dt, label) => {
+                const metric = dt.getData('metric');
+                if (!metric) return;
+                selectedMetric = metric;
+                selectedMetricLabel = label;
+                metricZone.classList.add('filled');
+                document.getElementById('metricZoneValue').textContent = label;
+                runForecast();   // auto-run immediately
+            });
+
+            setupZone(filterZone, 'filter', (dt, label) => {
+                const col = dt.getData('filterCol');
+                if (!col) return;
+                selectedFilterCol = col;
+                filterZone.classList.add('filled');
+                document.getElementById('filterZoneValue').textContent = label;
+                document.getElementById('cfFilterValGroup').style.display = 'block';
+                loadFilterValues(col).then(() => {
+                    if (selectedMetric) runForecast();  // re-run with new filter
+                });
+            });
+        }
+
+        function clearMetricZone() {
+            selectedMetric = null; selectedMetricLabel = null;
+            document.getElementById('metricZone').classList.remove('filled');
+            document.getElementById('metricZoneValue').textContent = '';
+            showEmpty();
+        }
+
+        function clearFilterZone() {
+            selectedFilterCol = null;
+            document.getElementById('filterZone').classList.remove('filled');
+            document.getElementById('filterZoneValue').textContent = '';
+            document.getElementById('cfFilterValGroup').style.display = 'none';
+            if (selectedMetric) runForecast();
+        }
+
+        function clearAll() {
+            clearMetricZone();
+            clearFilterZone();
+            document.getElementById('modelInfoSection').style.display = 'none';
+            document.getElementById('saveForecastBtn').disabled = true;
+            document.getElementById('downloadBtn').disabled = true;
+            _lastData = null;
+        }
+
+        async function loadFilterValues(col) {
+            const select = document.getElementById('cfFilterVal');
+            select.innerHTML = '<option value="">Loading…</option>';
+            try {
+                const resp = await fetch(`/api/v1/forecasts/filter-values?col=${encodeURIComponent(col)}`, {
+                    headers: getAuthHeaders()
+                });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (!resp.ok) throw new Error();
+                const data = await resp.json();
+                select.innerHTML = '<option value="">All</option>' +
+                    data.values.map(v => `<option value="${v}">${v}</option>`).join('');
+            } catch {
+                select.innerHTML = '<option value="">Error loading values</option>';
+            }
+        }
+
+        function rerunIfReady() {
+            if (selectedMetric) runForecast();
+        }
+
+        // ── Run forecast (auto) ───────────────────────────────────────────────────
+        async function runForecast() {
+            if (_running) return;
+            _running = true;
+
+            const metric    = selectedMetric;
+            const filterCol = selectedFilterCol;
+            const filterVal = filterCol ? document.getElementById('cfFilterVal').value : '';
+            const since     = document.getElementById('cfSince').value;
+            const periods   = document.getElementById('cfPeriods').value;
+
+            showSpinner(`Running best model for "${selectedMetricLabel}"… this may take 15–30 seconds`);
+
+            let url = `/api/v1/forecasts/custom?metric=${encodeURIComponent(metric)}&since=${since}&periods=${periods}`;
+            if (filterCol && filterVal) {
+                url += `&filter_col=${encodeURIComponent(filterCol)}&filter_val=${encodeURIComponent(filterVal)}`;
+            }
+
+            try {
+                const resp = await fetch(url, { headers: getAuthHeaders() });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${resp.status}`);
+                }
+                const data = await resp.json();
+                _lastData = data;
+                renderResult(data);
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                _running = false;
+            }
+        }
+
+        // ── Render result ─────────────────────────────────────────────────────────
+        function renderResult(data) {
+            // Update right panel model info
+            document.getElementById('modelName').textContent = data.model_name;
+            document.getElementById('modelMape').textContent = data.mape + '%';
+            document.getElementById('modelMae').textContent  = data.mae;
+            document.getElementById('modelInfoSection').style.display = '';
+
+            // Update chart header + pills
+            document.getElementById('chartTitle').textContent = data.chart_title || selectedMetricLabel + ' Forecast';
+            document.getElementById('modelPills').innerHTML = `
+                <span class="model-pill pill-model"><i class="bi bi-cpu"></i> ${data.model_name}</span>
+                <span class="model-pill pill-mape">MAPE ${data.mape}%</span>
+                <span class="model-pill pill-mae">MAE ${data.mae}</span>
+            `;
+
+            // Show chart elements, hide others
+            document.getElementById('emptyState').style.display   = 'none';
+            document.getElementById('spinnerOverlay').classList.remove('active');
+            document.getElementById('errorState').classList.remove('active');
+            document.getElementById('chartHeader').style.display  = '';
+            document.getElementById('chart').style.display        = '';
+
+            // Enable action buttons
+            document.getElementById('saveForecastBtn').disabled = false;
+            document.getElementById('downloadBtn').disabled     = false;
+
+            // Render chart
+            renderForecastChart(data);
+        }
+
+        function renderForecastChart(data) {
+            const trainDates  = data.historical_dates.slice(0, data.train_len);
+            const trainValues = data.historical_values.slice(0, data.train_len);
+
+            const traces = [
+                {
+                    x: [...data.forecast_dates, ...data.forecast_dates.slice().reverse()],
+                    y: [...data.forecast_upper, ...data.forecast_lower.slice().reverse()],
+                    fill: 'toself', fillcolor: 'rgba(0,102,179,0.12)',
+                    line: { color: 'transparent' }, name: '80% Confidence Band',
+                    type: 'scatter', hoverinfo: 'skip', showlegend: true
+                },
+                {
+                    x: trainDates, y: trainValues, type: 'scatter', mode: 'lines',
+                    name: 'Historical (Train)', line: { color: '#0066B3', width: 2 }
+                },
+                {
+                    x: data.test_dates, y: data.test_actual, type: 'scatter',
+                    mode: 'lines+markers', name: 'Test Actual',
+                    line: { color: '#2e7d32', width: 2 }, marker: { size: 5 }
+                },
+                {
+                    x: data.test_dates, y: data.test_forecast, type: 'scatter',
+                    mode: 'lines+markers', name: 'Test Forecast',
+                    line: { color: '#ff8f00', width: 2, dash: 'dash' }, marker: { size: 5 }
+                },
+                {
+                    x: data.forecast_dates, y: data.forecast_values, type: 'scatter',
+                    mode: 'lines+markers', name: 'Forecast',
+                    line: { color: '#C8102E', width: 2.5, dash: 'dash' },
+                    marker: { size: 5, color: '#C8102E' }
+                }
+            ];
+
+            const layout = {
+                paper_bgcolor: 'white', plot_bgcolor: '#f8f9fa',
+                font: { family: 'Inter, sans-serif', size: 12 },
+                yaxis: { title: data.y_label, gridcolor: '#dee2e6', zeroline: false },
+                xaxis: { gridcolor: '#dee2e6' },
+                legend: { orientation: 'h', y: -0.18, x: 0, font: { size: 11 } },
+                margin: { t: 10, r: 10, b: 80, l: 55 },
+                hovermode: 'x unified',
+                shapes: [
+                    { type: 'line', x0: data.train_end_date, x1: data.train_end_date,
+                      y0: 0, y1: 1, yref: 'paper', line: { color: '#6c757d', width: 1.5, dash: 'dot' } },
+                    { type: 'line',
+                      x0: data.historical_dates[data.historical_dates.length - 1],
+                      x1: data.historical_dates[data.historical_dates.length - 1],
+                      y0: 0, y1: 1, yref: 'paper', line: { color: '#C8102E', width: 1.5, dash: 'dot' } }
+                ],
+                annotations: [
+                    { x: data.train_end_date, y: 1.02, yref: 'paper', text: 'Train/Test split',
+                      showarrow: false, font: { size: 9, color: '#6c757d' }, xanchor: 'center' },
+                    { x: data.historical_dates[data.historical_dates.length - 1],
+                      y: 1.02, yref: 'paper', text: 'Forecast start',
+                      showarrow: false, font: { size: 9, color: '#C8102E' }, xanchor: 'center' }
+                ]
+            };
+
+            Plotly.newPlot('chart', traces, layout, { responsive: true });
+        }
+
+        // ── State helpers ─────────────────────────────────────────────────────────
+        function showEmpty() {
+            document.getElementById('emptyState').style.display      = 'flex';
+            document.getElementById('spinnerOverlay').classList.remove('active');
+            document.getElementById('errorState').classList.remove('active');
+            document.getElementById('chartHeader').style.display     = 'none';
+            document.getElementById('chart').style.display           = 'none';
+            Plotly.purge('chart');
+        }
+
+        function showSpinner(msg) {
+            document.getElementById('emptyState').style.display      = 'none';
+            document.getElementById('spinnerOverlay').classList.add('active');
+            document.getElementById('spinnerMsg').textContent        = msg;
+            document.getElementById('errorState').classList.remove('active');
+            document.getElementById('chartHeader').style.display     = 'none';
+            document.getElementById('chart').style.display           = 'none';
+        }
+
+        function showError(msg) {
+            document.getElementById('emptyState').style.display      = 'none';
+            document.getElementById('spinnerOverlay').classList.remove('active');
+            document.getElementById('errorState').classList.add('active');
+            document.getElementById('errorMsg').textContent          = msg;
+            document.getElementById('chartHeader').style.display     = 'none';
+            document.getElementById('chart').style.display           = 'none';
+        }
+
+        // ── Download ──────────────────────────────────────────────────────────────
+        function downloadChart() {
+            if (!_lastData) return;
+            const title = _lastData.chart_title || 'forecast';
+            Plotly.downloadImage('chart', {
+                format: 'png', width: 1400, height: 700,
+                filename: `CTA_Forecast_${title.replace(/\s+/g,'_').replace(/[[\]:/]/g,'')}`
+            });
+        }
+
+        // ── Save forecast modal ───────────────────────────────────────────────────
+        function saveForecast() {
+            if (!_lastData) return;
+            const d = _lastData;
+            const filterStr = d.filter_col && d.filter_val ? ` [${d.filter_col}: ${d.filter_val}]` : '';
+            const suggested = d.chart_title || `${selectedMetricLabel || d.metric} Forecast${filterStr}`;
+            document.getElementById('saveTitleInput').value = suggested;
+            document.getElementById('saveDescInput').value  = '';
+            document.getElementById('saveWordHint').textContent = '0 / 15 words';
+            document.getElementById('saveOverlay').classList.add('active');
+            document.getElementById('saveTitleInput').focus();
+        }
+
+        function closeSaveModal() {
+            document.getElementById('saveOverlay').classList.remove('active');
+        }
+
+        document.getElementById('saveOverlay')?.addEventListener('click', function(e) {
+            if (e.target === this) closeSaveModal();
+        });
+
+        async function confirmSave() {
+            const title = document.getElementById('saveTitleInput').value.trim();
+            if (!title) {
+                alert('Title is required.');
+                document.getElementById('saveTitleInput').focus();
+                return;
+            }
+
+            const desc = document.getElementById('saveDescInput').value.trim();
+            if (desc) {
+                const words = desc.split(/\s+/);
+                if (words.length > 15) {
+                    alert('Description must be 15 words or fewer.');
+                    document.getElementById('saveDescInput').focus();
+                    return;
+                }
+            }
+
+            const d = _lastData;
+            const plotData = {
+                type:       'forecast_custom',
+                metric:     d.metric,
+                filter_col: d.filter_col || null,
+                filter_val: d.filter_val || null,
+                since:      document.getElementById('cfSince').value,
+                periods:    parseInt(document.getElementById('cfPeriods').value, 10),
+                model_name: d.model_name,
+                mape:       d.mape,
+                mae:        d.mae,
+                chart_title: d.chart_title,
+                y_label:    d.y_label,
+            };
+
+            const btn = document.querySelector('.btn-save-primary');
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+
+            try {
+                const resp = await fetch('/api/v1/plots/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify({ title, description: desc, plot_data: plotData }),
+                });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (resp.ok) {
+                    closeSaveModal();
+                    showBusNotification('Forecast saved successfully!', 'save');
+                    const headerBtn = document.getElementById('saveForecastBtn');
+                    headerBtn.innerHTML = '<i class="bi bi-check-lg"></i> <span>Saved!</span>';
+                    setTimeout(() => {
+                        headerBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> <span>Save Forecast</span>';
+                    }, 2000);
+                    loadSavedForecasts();
+                }
+            } catch (e) {
+                alert('Failed to save. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Forecast';
+            }
+        }
+
+        // ── Load saved forecasts ──────────────────────────────────────────────────
+        async function loadSavedForecasts() {
+            const list = document.getElementById('savedForecastsList');
+            list.innerHTML = '<div class="empty-saved-plots">Loading…</div>';
+            try {
+                const resp = await fetch('/api/v1/plots/', { headers: getAuthHeaders() });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (!resp.ok) throw new Error();
+                const plots = await resp.json();
+                const forecasts = plots.filter(p => p.plot_data?.type === 'forecast_custom');
+                if (forecasts.length === 0) {
+                    list.innerHTML = '<div class="empty-saved-plots">No saved forecasts yet.</div>';
+                    return;
+                }
+                list.innerHTML = forecasts.map(p => {
+                    const d = p.plot_data;
+                    const filterStr = d.filter_col && d.filter_val ? ` · ${d.filter_col}: ${d.filter_val}` : '';
+                    return `
+                        <div class="saved-plot-item" onclick="loadSavedForecast(${p.id})">
+                            <button class="saved-plot-delete" onclick="event.stopPropagation();deleteForecast(${p.id},this)" title="Delete">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                            <div class="saved-plot-title">${escHtml(p.title)}</div>
+                            <div class="saved-plot-desc">${escHtml(d.model_name)} · MAPE ${d.mape}%${escHtml(filterStr)}</div>
+                            <div class="saved-plot-date">${new Date(p.created_at).toLocaleDateString()}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch {
+                list.innerHTML = '<div class="empty-saved-plots">Could not load saved forecasts.</div>';
+            }
+        }
+
+        async function loadSavedForecast(plotId) {
+            try {
+                const resp = await fetch(`/api/v1/plots/${plotId}`, { headers: getAuthHeaders() });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (!resp.ok) return;
+                const plot = await resp.json();
+                const d = plot.plot_data;
+
+                // Restore zones
+                selectedMetric    = d.metric || 'count';
+                selectedFilterCol = d.filter_col || null;
+                const label = METRIC_FIELDS.find(m => m.field === selectedMetric)?.name || selectedMetric;
+                selectedMetricLabel = label;
+
+                const mz = document.getElementById('metricZone');
+                mz.classList.add('filled');
+                document.getElementById('metricZoneValue').textContent = label;
+
+                document.getElementById('cfSince').value   = d.since;
+                document.getElementById('cfPeriods').value = d.periods;
+
+                if (selectedFilterCol) {
+                    const fl = FILTER_FIELDS.find(f => f.field === selectedFilterCol)?.name || selectedFilterCol;
+                    document.getElementById('filterZone').classList.add('filled');
+                    document.getElementById('filterZoneValue').textContent = fl;
+                    document.getElementById('cfFilterValGroup').style.display = 'block';
+                    await loadFilterValues(selectedFilterCol);
+                    document.getElementById('cfFilterVal').value = d.filter_val || '';
+                } else {
+                    clearFilterZone();
+                }
+
+                runForecast();
+            } catch (e) {
+                console.error('Failed to load:', e);
+            }
+        }
+
+        async function deleteForecast(plotId, btn) {
+            btn.disabled = true;
+            try {
+                const resp = await fetch(`/api/v1/plots/${plotId}`, {
+                    method: 'DELETE', headers: getAuthHeaders()
+                });
+                if (isAuthError(resp.status)) { handleAuthError(); return; }
+                if (resp.ok || resp.status === 204) {
+                    showBusNotification('Forecast deleted', 'delete');
+                    loadSavedForecasts();
+                }
+            } catch { btn.disabled = false; }
+        }
+
+        function escHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
+        }
+
+        // ── CTA Bus Notification ──────────────────────────────────────────────────
+        function showBusNotification(message, type = 'save') {
+            const bgColor     = type === 'save' ? 'rgba(0,102,179,0.12)' : 'rgba(200,16,46,0.12)';
+            const borderColor = type === 'save' ? '#0066B3' : '#C8102E';
+            const iconColor   = type === 'save' ? '#0066B3' : '#C8102E';
+
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%) scale(0.8);
+                background: ${bgColor};
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                color: #1a202c;
+                padding: 20px 40px;
+                border-radius: 16px;
+                border: 2px solid ${borderColor};
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                min-width: 380px;
+                opacity: 0;
+                animation: centerFadeInOut 1.69s ease-in-out forwards;
+            `;
+            notification.innerHTML = `
+                <div style="flex-shrink:0;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="${iconColor}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
+                        <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                    </svg>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:15px;font-weight:600;color:#1a202c;letter-spacing:0.3px;">${message}</div>
+                </div>
+                <style>
+                    @keyframes centerFadeInOut {
+                        0%   { opacity:0; transform:translate(-50%,-50%) scale(0.8); }
+                        10%  { opacity:1; transform:translate(-50%,-50%) scale(1); }
+                        90%  { opacity:1; transform:translate(-50%,-50%) scale(1); }
+                        100% { opacity:0; transform:translate(-50%,-50%) scale(0.95); }
+                    }
+                </style>
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 1690);
+        }
+
+        // ── Init ──────────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            buildFields();
+            setupDragDrop();
+            loadSavedForecasts();
+
+            // Word count watcher for save modal
+            document.getElementById('saveDescInput').addEventListener('input', function() {
+                const words = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
+                document.getElementById('saveWordHint').textContent = `${words} / 15 words`;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -16,7 +16,10 @@
       "Bash(pkill:*)",
       "Bash(copy viz_templates.html viz_templates_backup.html)",
       "Bash(pip install:*)",
-      "Bash(uvicorn:*)"
+      "Bash(uvicorn:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(python3:*)",
+      "Bash(py:*)"
     ],
     "deny": [],
     "ask": []

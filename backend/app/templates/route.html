@@ -692,7 +692,7 @@
                 <div class="metric-value" id="stop-count">0</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Incidents</div>
+                <div class="metric-label">Bus Incidents</div>
                 <div class="metric-value" id="assault-count">0</div>
             </div>
         </div>
@@ -706,7 +706,7 @@
                 </button>
                 <button id="view-assaults" class="view-toggle" data-view="assaults">
                     <span class="bi bi-exclamation-triangle-fill" style="font-size: 1.1rem;"></span>
-                    <span style="font-size: 0.75rem;">Incidents</span>
+                    <span style="font-size: 0.75rem;">Bus Incidents</span>
                 </button>
                 <button id="view-both" class="view-toggle active" data-view="both">
                     <span class="bi bi-map" style="font-size: 1.1rem;"></span>
@@ -758,26 +758,26 @@
 
     </aside>
         <div class="legend-panel">
-            <h2>Incident Risk Level (CTA Matrix)</h2>
+            <h2>Bus Incident Risk Level (CTA Matrix)</h2>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#228B22;"></span>
-                1 incident (Low)
+                1 bus incident (Low)
             </div>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#9ACD32;"></span>
-                2-4 incidents (Acceptable)
+                2-4 bus incidents (Acceptable)
             </div>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#FFD700;"></span>
-                5-9 incidents (Review)
+                5-9 bus incidents (Review)
             </div>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#FF8C00;"></span>
-                10-19 incidents (Elevated)
+                10-19 bus incidents (Elevated)
             </div>
             <div class="legend-entry">
                 <span class="legend-dot" style="background:#DC143C;"></span>
-                20+ incidents (Critical)
+                20+ bus incidents (Critical)
             </div>
             <div class="panel-divider" style="margin:12px 0;"></div>
             <div class="active-routes" id="active-routes-panel">
@@ -1259,7 +1259,7 @@ async function downloadAssaultClusterPDF(incidentIds) {
     await ensureAuthenticated();
 
     // Get filter context for professional overlay message
-    const filterContext = DATA.filters.eventType || DATA.filters.eventGroup || 'Selected Incidents';
+    const filterContext = DATA.filters.eventType || DATA.filters.eventGroup || 'Selected Bus Incidents';
     const overlay = showLoadingOverlay(`Generating Analysis Report: ${filterContext}...`);
     startProgressTracking();
 
@@ -1300,7 +1300,7 @@ async function downloadAssaultClusterPDF(incidentIds) {
             throw new Error(`Failed to generate PDF (status ${response.status}${detail ? `: ${detail}` : ''})`);
         }
 
-        updateProgressBar(60, 'Processing incident data...');
+        updateProgressBar(60, 'Processing bus incident data...');
         const blob = await response.blob();
 
         console.log(`   PDF generated successfully (${(blob.size / 1024).toFixed(1)} KB)`);
@@ -1309,14 +1309,14 @@ async function downloadAssaultClusterPDF(incidentIds) {
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = `CTA_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`;
+        a.download = `CTA_Bus_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
         updateProgressBar(100, 'Download complete!');
-        console.log(`   Download started: CTA_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`);
+        console.log(`   Download started: CTA_Bus_Incident_Cluster_Report_${incidentIds.length}_incidents.pdf`);
 
         // Brief delay to show 100% completion
         setTimeout(() => {
@@ -1812,21 +1812,21 @@ function handleAssaultMarkerVisibility() {
 
         // Build popup with incident details
         let popupContent = `
-            <div class="popup-title">${cluster.count === 1 ? 'Incident' : 'Incident Cluster'}</div>
-            <div class="popup-field"><strong>Total Incidents:</strong> ${cluster.count}</div>
+            <div class="popup-title">${cluster.count === 1 ? 'Bus Incident' : 'Bus Incident Cluster'}</div>
+            <div class="popup-field"><strong>Total Bus Incidents:</strong> ${cluster.count}</div>
             <div class="popup-field"><strong>Total Injuries:</strong> ${cluster.totalInjuries}</div>
             <div class="popup-field"><strong>Area Coverage:</strong> ~${(config.cellSize * 69).toFixed(2)} miles</div>
         `;
 
         // Show detailed incident cards (scrollable for large clusters)
         if (cluster.count > 0) {
-            popupContent += `<div style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--cta-dark);">Incident Details:</div>`;
+            popupContent += `<div style="margin-top: 12px; font-weight: 600; font-size: 0.9rem; color: var(--cta-dark);">Bus Incident Details:</div>`;
             popupContent += `<div style="max-height: 320px; overflow-y: auto; padding-right: 4px;">`;
 
             cluster.incidents.forEach((inc, idx) => {
                 const location = inc.approximate_address || inc.location_type || 'CTA bus location';
-                const eventType = inc.event_type || 'Incident';
-                const eventGroup = inc.event_type_group || 'Incident';
+                const eventType = inc.event_type || 'Bus Incident';
+                const eventGroup = inc.event_type_group || 'Bus Incident';
                 const date = inc.event_date || 'Unknown date';
                 const time = inc.event_time || '';
                 const description = inc.description || '';
